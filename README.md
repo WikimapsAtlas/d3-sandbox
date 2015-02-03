@@ -19,7 +19,14 @@ We welcome it, will add your gist url and description to the list of D3js cartog
 The most interesting visualisation for encyclopedic usages will be integrated
 into Wikipedia's Wikimaps project to map all countries of the world with it :)
 -->
-###
+### Structure
+
+ - `./index.html` is the central page which should diplays maps
+ - `./js/wikiatlas.js` personal library to draw each king of map.
+ - `./js/` contains convenient js files
+ - `./x.y_folder` , numbers indicate both priority & maturity (1.1 > 2)
+ - `./data/` contains old data for D3js community
+ - `./output/` contains new data sample from make-module
 
 #### Contacts
 
