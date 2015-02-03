@@ -26,7 +26,19 @@ into Wikipedia's Wikimaps project to map all countries of the world with it :)
 * @hugo_lz (Hugo Lopez)
 * @planemad (Arun Ganesh)
 
-Tweet us your d3js gist~
+### Lighten repository
+Use wisely, notify your teammate.
+
+```
+git config --get remote.origin.url
+rm -rf .git
+git remote rm origin
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin git@github.com:WikimapsAtlas/d3-sandbox.git
+git push -u --force origin master
+```
 
 [1]: https://gist.github.com/new
 [2]: http://bl.ocks.org

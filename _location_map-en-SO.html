@@ -279,7 +279,6 @@ function change(){ console.log(this.value) }
 "Zambia":{"item":"Zambia","W":21.872,"N":-8.239,"E":33.465,"S":-17.964},
 "Zimbabwe":{"item":"Zimbabwe","W":25.256,"N":-15.516,"E":32.817,"S":-22.271}
 };
- 
 
 
 var item_name = "Cambodia";
@@ -299,7 +298,8 @@ $("#select_target").change(function(){    // code executed each time the selecti
 	console.log("1a:"+item_name+" ; 1b:"+type +" ; bb: "+WNES);
 
 /* LOCATION MAP ***************************************** */
-    location("svg",400,WNES.item,WNES); // REInject svg
+	// split in 1.2_location map & 1.2_zoom_smart
+    // location("svg",400,WNES.item,WNES); // REInject svg
 /* LOCATOR MINIMAP ************************************** */
 	localisator("body",400, item_name, WNES.W, WNES.N, WNES.E, WNES.S);
 /* Doanload button ************************************** */

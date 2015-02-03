@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<style>
+
+svg { border: '2px solid #AAA'; }	
+.focus { fill:#FEFEE9;}
+
+</style>
+<body>
+	<div id="hook1"></div>
+	<div class="download"></div>
+	<div>(once, then refresh)</div>
+</body>
+<script src="./d3.v3.min.js"></script>
+<script src="./topojson.v1.min.js"></script>
+<script src="../js/wikiatlas.js"></script>
+<script>
+/* STYLES ************************************************************* */
+var focus = wp.location.focus,
+	land = wp.location.land + wp.stroke.no,
+	coast = wp.location.waterline+ wp.stroke.md,
+	water = wp.location.waterarea,
+	mesh = wp.location.border + wp.stroke.md + wp.dash.xl,
+	locator = wp.location.locator;
+	
+/* SETTINGS *********************************************************** */
+var width = 500, centered = [true], selected="India",
+    active = d3.select(null);
+var svg = d3.select("#hook1").append("svg")
+		.attr("id", "administrative_map_(wikiatlas_2014)")
+		.attr("width", width);
+var g = svg.append("g");
+
+var projection = d3.geo.equirectangular()
+      .scale(1)
+      .translate([0, 0]);
+
+var path = d3.geo.path()
+    .projection(projection);
+
+
+d3.json("../output/world-1e3/admin_0.topo.json", function(error, json) { //does transform the inputed .json !!!! Print & Check in console
+	var L0 =  json.objects.admin_0,
+		L1 =  json.objects.admin_1;
+	var countries = topojson.feature(json, L0).features,
+  		zeroin = countries.filter(function(d) { return d.id ==="India"; })[0]; /* */
+  	/* / state = states.features.filter(function(d) { return d.geometry.type === "MultiPolygon"; })[5]; /* */
+	console.log(zeroin);
+	zoomon(zeroin, width);
+
+	//oceans
+	var bg = g.append("g").attr("id","water")
+		.append("rect")
+		.attr("x", 0)
+		.attr("y", 0)
+		.attr("width", width)
+		.attr("height", svg.attr("width"))
+		.attr("fill",'#C6ECFF')
+      	.on("click", reset);
+  //landmass
+	g.append("g").attr("id","land")
+		.attr("style", land)
+	.selectAll("path")
+		.data(countries)
+	.enter().append("path")
+		.attr("d", path)
+      	.on("click", clicked);
+
+  //inland borders lines
+	g.append("g").attr("id","border")
+		.attr("style","fill: none; stroke:#646464; stroke-width:3px;stroke-dasharray:8,4;")
+	.selectAll("path")
+		.data([topojson.mesh(json, L0, function(a, b) { return a !== b; })])
+	.enter().append("path")
+		.attr("d", path);
+	
+	
+  //coast lines
+	g.append("g").attr("id","coast")
+		.attr("style", coast+"stroke-width:3px;stroke-dasharray:none; ")
+	.append("path")
+		.datum(topojson.mesh(json, L0, function(a, b) { return a === b; }))
+		.attr("d", path);/**/
+
+	// Focus
+	g.selectAll("path")
+		.attr("style", function(d) { if (d.id === selected){ return focus;} })
+		
+	
+});
+
+
+function zoomon(d, width, padding_pc){
+	t = getTransform(d,padding_pc);
+	projection
+		.scale(t.scale)
+		.translate(t.translate);
+	svg.attr("height", t.height);
+}
+function newproj(d, width, padding_pc){
+	t = getTransform(d,padding_pc);
+	return projection
+		.scale(t.scale)
+		.translate(t.translate);
+}
+
+function clicked(d) {
+  if (active.node() === this) return reset();
+  active.classed("active", false);
+  active = d3.select(this).classed("active", true);
+  t = getTransform(d);
+  g.transition()
+      .duration(1000)
+      .style("stroke-width", 1.5 / t.scale + "px")
+      .attr("transform", "translate(" + t.translate + ")scale(" + t.scale + ")");
+	svg.transition()
+      .duration(1000)
+		.attr("height", t.height);
+}
+
+function reset() {
+  active.classed("active", false);
+  active = d3.select(null);
+
+  g.transition()
+      .duration(1000)
+      .style("stroke-width", "1.5px")
+      .attr("transform", "");
+	svg.transition()
+      .duration(1000)
+		.attr("height", width);
+
+}
+// D3js transition mess?
+// http://stackoverflow.com/questions/17045826/
+
+	
+
+
+
+
+downloadButtons(".download", projection);
+</script>
+</html>
