@@ -1,0 +1,3 @@
+[submodule "orth_static"]
+	path = orth_static
+	url = https://gist.github.com/a62f1d61168eae985d5c.git

@@ -1,0 +1,1 @@
+WP style user-friendly selection of geo-coordinates (decimal degrees).

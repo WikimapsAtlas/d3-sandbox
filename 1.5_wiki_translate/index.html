@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<body>
+<script src="//code.jquery.com/jquery-2.1.0.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.13/d3.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/topojson/1.1.0/topojson.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/d3-geo-projection/0.2.9/d3.geo.projection.min.js"></script>
+	
+<script src="./wikis.js"></script>
+	<style>svg { border: 1px solid #BBB; }
+#hook {
+  margin:10px 10%;
+  padding:20px;
+  border:2px solid #d0d0d0;
+  border-radius: 5px;
+  height:100%;
+  clear:both;
+}
+#score{
+  float:right;
+  padding:4px 0;
+  font-weight:bold;
+}
+#info{
+  float:left;
+  font-weight:bold;
+  padding:4px 0;
+  width:80%;
+}
+#top{
+  margin:10px 10%;
+}
+.country{
+  display:none;
+  fill:#555;
+  stroke:#555;
+}
+.country-back{
+  fill:#ddd;
+  stroke:#fff;
+}
+.correct {
+  fill:#61aa61;
+  fill-opacity: 0.6;
+}
+.error{
+  fill:#B10000;
+  fill-opacity: 0.6;
+}
+.fill {
+  fill: #fff;
+}
+.graticule {
+  fill: none;
+  stroke: #777;
+  stroke-width: .5px;
+  stroke-opacity: .5;
+}
+#top .start{
+  position: absolute;
+  top: 43%;
+  left: 45%;
+  background: #fff;
+  width: auto;
+  padding: 4px 10px;
+  text-align: center;
+  font-size: 140%;
+}
+#options{
+  margin-bottom:10px;
+}
+</style>
+Check out the source or go <a href="http://techslides.com/geography-game-with-d3/">back to article</a>.</p>
+
+    <div id="options">
+      <label>Country Borders?</label>
+      <input type="checkbox" id="borders" name="borders" />
+      <label>Language?</label>
+      <select type="checkbox" id="languages" name="languages"><option>English</option>  </select>
+    </div>
+<script>
+/* ****************************************************** */
+/* WIKIDATA TRANSLATED ********************************** */
+/* Inject list of wiki languages ************************ */
+	$(document).ready(function(){  
+    	setLanguagesSelector($('#languages'));//try to pre-populate the customer drop down list
+    });  
+    var setLanguagesSelector = function ($this){ 
+		var opts = wikis; // from wikis.js
+		if(opts){ 
+			$.each(opts, function(key, value) { 
+				$this.append($('<option/>').val(key).text(value));
+			});
+		}
+    };
+
+	
+/* Select language & translate ONE => ALL *************** */
+	//when activated, get the data value and index changed target
+	var langChange = function() { 
+		var selectedValue = d3.event.target.value;
+		var selectedIndex = d3.event.target.selectedIndex;
+		var selectedDOMElement = d3.event.target.children[selectedIndex];
+		var selection = d3.select(selectedDOMElement);
+		console.log("Selected language n⁰: "+ selectedIndex +" / "+ selectedValue + " / "+ selection.text() );        
+		
+		WD_translate("India", selectedValue )
+	};
+	//add this event listener to the first menu (as a whole):
+	d3.select("#languages").on("change", langChange);
+
+	
+/* Wikidata translate *********************************** */
+
+/* PRINCIPLES ############################################ */
+// 1. API'S URL:
+// 1a.Parts of the url:
+wd = "https://www.wikidata.org/w/api.php?";
+wp = "http://en.wikipedia.org/w/api.php?"; // list of iso-code = ? ----------------<
+aw = "action=wbgetentities" ; // rather wdpoint
+aq = "action=query" ; // ?rather wppage
+ts = "&sites=enwiki" ; // wd only&required. // list of wiki-code = ? --------------<
+t = "&titles="; //item, wd|wp
+l  = "&languages=" ; // wdpoint only
+ps = "&props=sitelinks|labels" ; // wdpoint only
+  //sitelinks: all interwikis
+  //labels: title without _(tag), for l (languages) only
+  //aliases: label of redirect page
+p = "&prop=extracts&exintro&explaintext&exsentences=10" ; // wppage only
+r = "&redirects&converttitles" ; // wppage only
+c = "&callback=?" // wd|wp
+f = "&format=json" // wd|wp
+
+//1b. Compose your url:
+var urlwd = wd+aw+ts+t+ "France" +l+ "zh" +ps    +c+f; // useless line, here for reference
+	
+// 2b. Single query:
+var WD_translate = function(item, iso) { // input
+	var urlwd = wd+aw+ts+t+ item +l+ iso +ps    +c+f; // typical wd query
+	var isowiki = iso+"wiki";
+    $.getJSON(urlwd, function (data) {
+        var item_id = Object.keys(data.entities)[0]; // THIS DO THE TRICK !
+		var target = data.entities[item_id].sitelinks[isowiki]; 
+		console.log("Wikidata for translation: "+JSON.stringify(target))
+		if(target === undefined){ var trad = "[en:"+item+"]"; } // default case: no localization
+		else{ var trad = target.title; } // with NO basic label cleaning, which should come later if required
+		var res= {}; res.i= item, res.o = trad;
+		console.log(res.i+"/"+res.o);
+    });
+}
+	
+	
+	
+			/*  		 to do 			  */
+	
+/* ********************** END *************************** */
+
+</script>
+    <div id="info" class="start">Loading...</div>
+    <div id="score"></div>
+    <div class="clear"></div>
+  </div>
+
+  <div id="hook"></div>
+
+<script>
+/* ****************************************************** */
+/* INIT************************************************** */
+var width = document.getElementById('hook').offsetWidth-60;
+var height = width / 2;
+
+var topo,all,tries=0,score=0;
+
+var projection = d3.geo.equirectangular().translate([0, 0]).scale(width / 2 / Math.PI);
+
+var path = d3.geo.path().projection(projection);
+
+var graticule = d3.geo.graticule();
+
+/* ****************************************************** */
+/* SVG ************************************************** */
+var svg = d3.select("#hook").append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+var outterg = svg.append("g")
+	.attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+var g = outterg.append("g").attr("id", "innerg");
+
+  g.append("defs").append("path")
+      .datum({type: "Sphere"})
+      .attr("id", "sphere")
+      .attr("d", path);
+ 
+  g.append("use")
+      .attr("class", "stroke")
+      .attr("xlink:href", "#sphere");
+ 
+  g.append("use")
+      .attr("class", "fill")
+      .attr("xlink:href", "#sphere");
+
+  g.append("path")
+      .datum(graticule)
+      .attr("class", "graticule")
+      .attr("d", path);
+
+/* ****************************************************** */
+/* GIS data injection *********************************** */
+  d3.json("./world-geogame-110m.json", function(error, world) {
+
+    topo = topojson.feature(world, world.objects.countries).features;
+    var neighbors = topojson.neighbors(world.objects.countries.geometries);
+
+    //filter and place borders into topo
+    topo = topo.filter(function(f,i){ 
+      if(path.area(f)>100){
+        var b = neighbors[i];
+        var t = 'Nearby...  ';
+        if(b.length>0){
+          b.forEach(function(g){
+            t = t + topo[g].properties.name+', ';
+          });
+          f.properties.borders = t.substr(0,t.length-2);
+        } else {
+          f.properties.borders = 'No nearby countries';
+        }
+        return f;
+      }
+    });
+
+    //lets shuffle topo so that it shows different countries on each reload
+    d3.shuffle(topo);
+
+    var country = d3.select("#innerg").selectAll(".country").data(topo);
+
+    //ofsets (useless !)
+    var offsetL = document.getElementById('hook').offsetLeft+30;
+   var offsetT =document.getElementById('hook').offsetTop-30;
+
+    d3.select("#innerg").insert("path")  
+      .datum(topojson.feature(world, world.objects.countries))
+      .attr("class", "country-back")  
+      .attr("d", path); 
+
+    country.enter().insert("path")
+      .attr("class", "country")
+      .attr("d", path)
+      .attr("id", function(d,i) { return 'b'+d.id; })
+      .attr("title", function(d,i) { return d.properties.id; })
+      .style("stroke", "#111")
+      .attr("transform", function(d,i) { 
+        var cx = Number(-1*path.centroid(d)[0]);
+        var cy = Number(-1*path.centroid(d)[1]);
+        var coord = [cx,cy];
+        return "translate(" + coord + ")"
+      })
+      .attr("x", function(d,i) { 
+        var cx = Number(-1*path.centroid(d)[0]);
+        return cx;
+      })  
+      .attr("y", function(d,i) { 
+        var cy = Number(-1*path.centroid(d)[1]);
+        return cy;
+      })     
+      .call(drag);
+   
+    //all used to keep track
+    all = d3.selectAll(".country")[0];
+    d3.select("#info").text("World Map");
+
+    //start
+    go();
+
+  });
+
+
+
+/* ****************************************************** */
+/* GAME FUNCTION **************************************** */
+/* Start ************************************************ */
+function go(){
+  d3.select("#info").attr("class","start");
+  var missed = topo.length - all.length - score;
+  d3.select("#score").text("Score: "+score+"/"+topo.length+" | Missed: "+missed);
+
+  if(all.length>0){
+    var obj = d3.select(all.shift());
+    obj.style("display","block");
+    d3.select("#info").text(obj.attr("title"));
+    window.setTimeout(function(){ 
+      d3.select("#info").attr("class","");
+    }, 1500);
+  } else {
+    d3.select("#info").text("All Done. Restart to try again."); 
+    d3.select(".country-back").transition().duration(1500).style("fill", function(){
+      return "#666";
+    });
+  }
+}
+	
+/* Borders or not *************************************** */
+d3.select("#borders").on("click",function(){
+  if(this.checked){ d3.select(".country-back").style("stroke","#ddd"); } 
+  else { d3.select(".country-back").style("stroke","#fff"); }
+});
+
+/* 
+d3.select("#lang").on("click",function(){
+  if(this.selected){ translate_labels(); }
+});
+for(var i = 0; i< d3.selectAll(".labels").lengh; i++) {
+ input = d3.selectAll(".labels")[i].text();
+ output= wikidata_translate(input, isolang);
+ 3.selectAll(".labels")[i].text(outpu);
+} */
+	
+/* ****************************************************** */
+/* DRAG & DROP ****************************************** */
+var drag = d3.behavior.drag()
+    .on("drag", dragmove)
+    .on("dragstart", dragstart)
+    .on("dragend", dragend);
+
+function dragstart(d) {
+  //d3.event.sourceEvent.stopPropagation(); // silence other listeners
+  d.x = Number(d3.select(this).attr("x"));
+  d.y = Number(d3.select(this).attr("y"));
+}
+
+function dragmove(d) {
+  //only if its new country
+  if(d3.select('#b'+d.id).attr("class") == "country"){
+    d.x += d3.event.dx;
+    d.y += d3.event.dy;
+    d3.select(this).attr("transform", function(d,i){
+      return "translate(" + [ d.x,d.y ] + ")"
+    });
+  }
+}
+
+function dragend(d) {
+  //only if its new country
+  if(d3.select('#b'+d.id).attr("class") == "country"){
+
+    //snap to position if you are 10 pixels or closer
+    if(d.x > -10 && d.x < 10 && d.y > -10 && d.y < 10 ){
+		tries = 0; score++;
+		d3.select(this)
+			.attr("class","correct")
+			.attr("transform", function(d,i){ return "translate([0,0])"; });
+		go(); // go next
+
+    } else { tries++; /* wrong ********************** */      
+      if(tries == 1){ // move shape back to Null Island.
+        d3.select("#info").text(d.properties.borders.split(",").slice(0,3));
+        //put back in the middle!
+        var cx = Number(-1*path.centroid(d)[0]);
+        var cy = Number(-1*path.centroid(d)[1]);
+        var coord = [cx,cy];
+        d3.select(this).transition().duration(500).attr("transform", function(d,i){
+          return "translate(" + coord + ")"
+        });
+		  
+      } else { //wrong again, move element to correct position and mark red!
+        d3.select(this).transition().duration(500).attr("class","error").attr("transform", function(d,i){
+          return "translate([0,0])";
+        });
+        tries = 0;
+		go();//go to next!
+	  }     
+    }
+  }
+}
+</script>
+</body>
+</html>

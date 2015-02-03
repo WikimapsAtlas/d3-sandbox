@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  margin: 0;
+}
+	
+path {
+  fill: white;   /* hide artifacts*/
+/*  stroke: #888; /* tiles border visible */
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.minor_road, .roads_residential { 
+	fill: none;
+	stroke: #fff;
+	stroke-width: 0.3px; }
+.major_road, .roads { 
+	fill: none;
+	stroke: #777;
+	stroke-width: .4px; }
+.highway, .roads_primary {
+	stroke: #555;
+	stroke-width: 0.35px; }
+.roads_trunk {
+	fill: none;
+	stroke: #3b3b3b;
+	stroke-width: 0.4px;
+}
+.rail {
+	fill: none;
+	stroke: #333; 
+	stroke-width: 0.4px; }
+.path{
+	fill: none; }
+.buildings path { 
+	fill: #BBB;
+/*	stroke: #888;
+	stroke-width: 0.3px; */}
+/* .land-usages path { fill: #DDFFDD; } */
+.park, .grass, .forest, .pitch, .pitch, .playground { fill: #46af46; }
+.water path { 
+	fill: steelblue;
+	fill-opacity: 0.5; }
+.pois path { stroke: #666 ; fill: orange ;}
+
+</style>
+<body>
+•) <a href="https://codio.io/hugolpz/D3-map/app/Vector_Tiles.html">Yug > D3js Vector tiles</a>. Based on •) <a href="http://bl.ocks.org/mbostock/5798874">Bostock > Vector Tiles</a>, •) <a href="http://www.openstreetmap.org/?lat=44.83846&lon=-0.57401&zoom=15&layers=M">OSM > Bordeaux</a>, •) <a href="http://openstreetmap.us/~migurski/vector-datasource/">Migurski > Py Mapnik Vector Tiles server (JSON)</a>, •) <a href="http://wiki.openstreetmap.org/wiki/Map_Features">OSM > Features</a>,
+
+
+<script src="js/d3.v3.min.js"></script>
+<script src="js/d3.geo.tile.v0.min.js"></script>
+<script>
+
+var width = Math.max(960, window.innerWidth),
+    height = Math.max(500, window.innerHeight);
+
+var tiler = d3.geo.tile()
+    .size([width, height]);
+
+var projection = d3.geo.mercator()
+    .center([-1.547, 47.215]) // EW, NS 47.2159/-1.5496
+    // Bordeaux : -0.5783, 44.8386 ; CB test: 107.36, 16.07 ; CB Banlung: 106.9870014, 13.7392101
+    // Monpou: 0.08648, 44.44767 
+    // Saubion: -1.31943, 43.67291
+// Nantes: 1.3310,  47.1305
+    .scale((1 << 20) / 2 / Math.PI) // (1 << zoom n times)
+    .translate([width / 2, height / 2]);
+
+var path = d3.geo.path()
+    .projection(projection);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .call(renderTiles, "landuse")
+    .call(renderTiles, "water")
+    .call(renderTiles, "roads")
+    .call(renderTiles, "buildings")
+    //.call(renderTiles, "pois");
+//vectiles: highroad, skeletron, buildings, pois, land-usages, water-areas
+
+function renderTiles (svg, type) {
+  svg.append("g")
+      .attr("id", type)
+      .attr("class", type)
+    .selectAll("g")
+      .data(tiler
+        .scale(projection.scale() * 2 * Math.PI)
+        .translate(projection([0, 0]))
+		   )
+    .enter().append("g").attr("class", "tuile")
+      .each(function(d) {
+        var g = d3.select(this);
+	  	//http://vector.mapzen.com/osm/{layers}/{z}/{x}/{y}.{format}
+        //http://tile.openstreetmap.us/vectiles-{type}/{z}/{x}/{y}.json
+   	//d3.json("http://" + ["a", "b", "c"][(d[0] * 31 + d[1]) % 3] + ".tile.openstreetmap.us/vectiles-" + type + "/" + d[2] + "/" + d[0] + "/" + d[1] + ".json", function(error, json) {
+	  d3.json("http://vector.mapzen.com/osm/" + type + "/" + d[2] + "/" + d[0] + "/" + d[1] + ".json", function(error, json) {
+          g.selectAll("path")
+              .data(json.features.sort(function(a, b) { return a.properties.sort_key - b.properties.sort_key; }))
+            .enter().append("path")
+              .attr("class", function(d) { return d.properties.kind; })
+              .attr("d", path);
+        });
+      });
+}
+
+</script>

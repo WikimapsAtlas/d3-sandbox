@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+<style><!-- svg -->
+svg { border: 1px solid #CCC; }
+.background { fill: #C6ECFF; }
+.foreground {
+  fill: none;
+  stroke: #333;
+  stroke-width: 1.5px;
+}
+.graticule {
+  fill: none;
+  stroke: #777;
+  stroke-width: .5px;
+}
+.graticule :nth-child(2n) {
+  stroke-dasharray: 2,2;
+}
+.brush .extent {
+  stroke: #B10000;
+  fill-opacity: .125;
+  shape-rendering: crispEdges;
+}
+</style>
+<style>
+ body { background-image: url('http://subtlepatterns.com/patterns/hixs_pattern_evolution.png'); }
+h3 { font-weight: bold;}
+.panel-default>.panel-heading {
+	color: #333;
+	background-color: #e5e5e5;
+	border-color: #ddd;
+}
+.panel-danger>.panel-heading {
+	background-color: #df3e3e;
+	border: 1px solid #a00;
+	color: #fff;
+	text-shadow: 0 -1px 0 #900;
+}
+.shell{	box-shadow: 0 0 2em rgba(0,0,0,0.4); 
+	margin: 0em 3em 0em 3em; 
+	max-width: 60em;}
+
+.shell-top {
+	text-align: center;
+	color: #525252;
+	padding: 5px 0;
+	margin: 0;
+	text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
+	font-size: 0.85em;
+	border: 1px solid #CCCCCC;
+	border-bottom: none;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	background: #f7f7f7;
+	background: linear-gradient(to bottom,  #f7f7f7 0%,#B8B8B8 100%); /* W3C */
+}
+.shell-body {
+	background-color: #000;
+	color: #FFF;
+	font: 1em 'Andale Mono', Consolas, 'Courier New';
+	line-height: 1.6em;
+    word-wrap: break-word;
+	border: 1px solid #CCCCCC;
+	border-top: none;
+	border-bottom-left-radius: 3px;
+	border-bottom-right-radius: 3px;
+	padding: .2em .2em .2em 1em;
+	margin:0;
+	min-height: 2em;
+}
+.shell-body:before { content: "$ "; color: #45D40C; }
+.text-warning { color: #f0ad4e; }
+.input-group-addon.head { width: 6em; }
+</style>
+
+</head>
+<body class="container-fluid"><br>
+<!-- #hook ********************************************* -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+  	<h3 class="panel-title" id="select"><i class="fa fa-edit"> </i> Step 1: Select an area</h3>
+ 	</div>
+ 	<div class="panel-body">
+		<p>Using your mouse, select an area on the map as precisely as you can. Geo-coordinates will be send to Step 2.</p>
+
+		<div id="hook"><!-- receiving svg world map --></div>
+  </div>
+</div>
+
+<!-- #values ******************************************* -->
+<div class="panel panel-default">
+  <div class="panel-heading">
+  	<h3 class="panel-title" id="values"><i class="fa fa-check-square-o"> </i> Step 2: Adjust the values</h3>
+ 	</div>
+ 	<div class="panel-body">
+		<p>You can now round the geocoordinate values as needed. The <code>ITEM</code> field <em>must be enter</em>. Press <span class="label label-success">confirm</span> when all is clean & sharp.</p>
+
+<div class="row">
+	<div class="form-group col-xs-6 col-md-3">
+		<label class="sr-only" for="WEST">WEST coordinates in décimal degrees.</label>
+		<div class="input-group">
+			<div class="input-group-addon head">WEST:</div>
+			<input type="text" class="form-control" id="WEST" placeholder="12.3">
+			<!-- div class="input-group-addon">⁰</div -->
+		</div>
+	</div>
+	<div class="form-group col-xs-6 col-md-3">
+		<label class="sr-only" for="NORTH">NORTH coordinates in décimal degrees.</label>
+		<div class="input-group">
+			<div class="input-group-addon head">NORTH:</div>
+			<input type="text" class="form-control" id="NORTH" placeholder="45.6">
+		</div>
+	</div>
+	<div class="form-group col-xs-6 col-md-3">
+		<label class="sr-only" for="EAST">EAST coordinates in décimal degrees.</label>
+		<div class="input-group">
+			<div class="input-group-addon head">EAST:</div>
+			<input type="text" class="form-control" id="EAST" placeholder="23.4">
+		</div>
+	</div>
+	<div class="form-group col-xs-6 col-md-3">
+		<label class="sr-only" for="SOUTH">SOUTH coordinates in décimal degrees.</label>
+		<div class="input-group">
+			<div class="input-group-addon head">SOUTH:</div>
+			<input type="text" class="form-control" id="SOUTH" placeholder="56.7">
+		</div>
+	</div>
+	<!-- END OF FIRST LINE -->
+	<div class="form-group col-xs-6 col-md-3">
+		<label class="sr-only" for="title">ITEM (as a string without space or special character)</label>
+		<div class="input-group">
+			<div class="input-group-addon head">ITEM:</div>
+			<input type="text" class="form-control" id="ITEM" placeholder="Area_or_topic_name_(without_space_or_special_character)">
+		</div>
+	</div>
+	<div class="form-group col-xs-6 col-md-3">
+		<label class="sr-only" for="SLICES">Topographic SLICES, default to 8, must be >2.</label>
+		<div class="input-group">
+			<div class="input-group-addon head">SLICES:</div>
+			<select class="form-control" id="SLICES">
+			  <option>3</option>
+			  <option>4</option>
+			  <option>5</option>
+			  <option selected>6</option>
+			  <option>7</option>
+			  <option>8</option>
+			  <option>9</option>
+			  <option>10</option>
+			  <option>11</option>
+			  <option>12</option>
+			</select>
+		</div>
+	</div>
+	</div><!-- end row-->
+	
+  <button class="btn btn-success pull-right confirm">Confirm</button>
+		
+		
+		
+  </div>
+</div>
+<!-- #fire_zone **************************************** -->
+<div class="panel panel-primary">
+	<div class="panel-heading">
+		<h3 class="panel-title" id="fire_zone"><i class="fa fa-rocket"> </i> Step 3: Launch the beast</h3>
+	</div>
+	<div class="panel-body row">
+		<div class="col-md-6 col-xs-12">
+			<button id="resetKnol" type="button" class="btn btn-primary pull-right"
+					data-toggle="tooltip" data-placement="top"  title="Be patient it can take a few minutes"> 
+				<i class="fa fa-warning text-warning"> </i>
+				<span>Run the beast</span>
+			</button>
+			<p>The beast is huge & slow to move. With clean items let's awake <em>It</em>.</p>
+		</div>
+		<div class="col-md-6 col-xs-12">
+			<div class="shell">
+				<p class="shell-top">Shell command to send to server:</p>
+				<p class="shell-body"></p>
+			</div>
+		</div>
+	</div>
+</div>
+<!-- #download ***************************************** -->
+<div class="panel panel-success">
+  <div class="panel-heading">
+  	<h3 class="panel-title" id="download">
+		<i class="fa fa-download text-success"> </i> Step 4: 
+		Download your files
+	  </h3>
+ 	</div>
+ 	<div class="panel-body">
+		<p>The beast end up offering secret gems.
+		<ul id="downloads_url"></ul>
+  </div>
+</div>
+<script src="//code.jquery.com/jquery-2.1.0.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.4.13/d3.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/topojson/1.1.0/topojson.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/d3-geo-projection/0.2.9/d3.geo.projection.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>	
+<script>
+	// Bootstrap Components
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+})	
+</script>
+<script>
+var width = 960,
+    height = width/960*500;
+
+var projection = d3.geo.equirectangular();
+
+var path = d3.geo.path()
+    .projection(projection);
+
+var graticule = d3.geo.graticule();
+
+var  x = d3.scale.linear().range([0, width]),
+	 y = d3.scale.linear().range([0, height]);
+
+brush = d3.svg.brush()
+    .x(x)
+    .y(y)
+    .on("brush", brushed)
+    .on("brushend", bounding)
+    .extent([[100, 100], [200, 200]]);
+
+var svg = d3.select("#hook").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+svg.append("defs").append("path")
+    .datum({type: "Sphere"})
+    .attr("id", "sphere")
+    .attr("d", path);
+
+svg.append("use")
+    .attr("class", "background")
+    .attr("xlink:href", "#sphere");
+
+svg.append("g")
+    .attr("class", "graticule")
+  .selectAll("path")
+    .data(graticule.lines)
+  .enter().append("path")
+    .attr("d", path);
+
+svg.append("use")
+    .attr("class", "foreground")
+    .attr("xlink:href", "#sphere");
+    
+var mybrush = svg.append("g")
+    .attr("class", "brush")
+    .call(brush);
+/* ****************************************************** */
+/* INJECT GIS ******************************************* */
+d3.json("./world-110m-ids.json", function(error, world) {
+	var country = svg.selectAll(".country")
+		.data(topojson.feature(world, world.objects.countries).features)
+	.enter().insert("path", ".graticule")
+		.attr("id", function(d){ return d.id } )
+		.attr("class", "country")
+		.style("fill", "#FDFBEA")
+		.attr("d", path);
+	var boundaries = svg.insert("path", ".graticule")
+        //.datum( topojson.mesh(world, world.objects.countries, function(a,b) { if (a!==b){var ret = b;}return ret;}))
+		.datum( topojson.mesh(world, world.objects.countries, function(a,b) { return a!==b; }))
+		.attr("class", "boundary")
+		.attr("d", path)
+		.style({'fill':'none','stroke': '#656565', 'stroke-width': 0.5});
+
+	var coast = svg.insert("path", ".graticule")
+        //.datum( topojson.mesh(world, world.objects.countries, function(a,b) { if (a==b){var ret = b;}return ret;}))
+		.datum( topojson.mesh(world, world.objects.countries, function(a,b) { return a==b; }))
+        .attr("class", "Coast_border")
+		.style({'fill': 'none', 'stroke': '#0978AB', 'stroke-linejoin': 'round'})
+		.style({'stroke-width': 1 })
+		.attr("d", path);
+});
+
+brushed();
+function brushed() { } // empty function not used.
+
+function bounding() {
+	var extent = brush.extent();
+	console.log(extent);
+	var WNES = [ projection.invert([x(extent[0][0]),y(extent[0][1]) ]), 
+				 projection.invert([x(extent[1][0]),y(extent[1][1]) ])  ];
+	var W=Math.round(WNES[0][0]*100)/100, 
+		N=Math.round(WNES[0][1]*100)/100, 
+		E=Math.round(WNES[1][0]*100)/100, 
+		S=Math.round(WNES[1][1]*100)/100;
+
+	$("#WEST").val(W);
+	$("#NORTH").val(N);
+	$("#EAST").val(E);
+	$("#SOUTH").val(S);
+	confirm();
+
+}
+var confirm = function() {
+	var W2 = $("#WEST").val(),
+		N2 = $("#NORTH").val(),
+		E2 = $("#EAST").val(),
+		S2 = $("#SOUTH").val(),
+		ITEM2=$("#ITEM").val(),
+		SLICES2 = $("#SLICES option:selected" ).text();
+	var command = "make -f master.makefile ITEM="+ITEM2+" WEST="+W2+" NORTH="+N2+" EAST="+E2+" SOUTH="+S2+" SLICES="+SLICES2;
+    $(".shell-body").text(command);
+	var extent = brush.extent();
+	console.log("ext: "+ x(extent[0][0]))
+	
+	d3.select(".extent") //select all the just-created rectangles
+		.attr("x", projection([W2,N2])[0])//x(extent[0][0]))  // redraw rectangle on same value ! need reprojection of W
+		.attr("y", projection([W2,N2])[1])
+		.attr("width", projection([E2,S2])[0]-projection([W2,N2])[0])
+		.attr("height", projection([E2,S2])[1]-projection([W2,N2])[1]); //set their height
+}
+$(".confirm").on("click", confirm);
+</script>
+</body>

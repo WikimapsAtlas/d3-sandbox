@@ -1,0 +1,384 @@
+/**
+* Created with Wikiatlas.
+* User: hugolpz
+* Version: 2014.09.04 */
+/* Sister js ******************************************** */
+/* http://wikimapsatlas.github.io/static/js/wikimaps.atlas.js */
+/* ****************************************************** */
+/* SUGAR ************************************************ */
+
+var graticule = function($D3selector,step) {
+	d3.geo.graticule().step([step, step]);
+	$D3selector.append("path")
+        .datum(graticule)
+        .attr("class", "graticule")
+        .attr("d", path)
+		.style({'fill': 'none', 'stroke': '#0978AB', 'stroke-linejoin': 'round'})
+		.style({'stroke-width': 0.5 });
+}
+// Function Click > Console (for fun)
+    function click(a){console.log(a.properties.name);}
+    function dblclick(a){window.location.assign("http://en.wikipedia.org/wiki/"+a.properties.name, '_blank');}
+
+/* MATH TOOLKIT ***************************************** */
+function parallel(φ, λ0, λ1) {
+  if (λ0 > λ1) λ1 += 360;
+  var dλ = λ1 - λ0,
+      step = dλ / Math.ceil(dλ);
+  return d3.range(λ0, λ1 + 0.5 * step, step).map(function(λ) { return [normalise(λ), φ]; });
+}
+function normalise(x) {
+  return (x + 180) % 360 - 180;
+}
+
+/* ****************************************************** */
+/* LOCATOR MAP MODULE ******************************* */
+var localisator = function (hookId,localisator_width, title, WNES0, WNES1, WNES2, WNES3) {
+/* Init ************************************************* */
+	var width  = 1*localisator_width,
+    	height = 1*localisator_width;
+	var lon_central = function(){ 
+		var num;
+		if(WNES2<WNES0){ num= -(WNES0+WNES2)/2+180; }
+		else{ num= -(WNES0+WNES2)/2; }
+		return num;
+	};
+
+	var proj = d3.geo.orthographic()
+    	.scale(1/2*localisator_width)
+    	.rotate([ lon_central(), -(WNES1+WNES3)/2 +10 ]); // orthographic + 10⁰ to simulate real life globe watching.
+
+	var projection2 = proj
+		.translate([width / 2 , height / 2 ])
+		.clipAngle(90);
+
+	var path = d3.geo.path()
+		.projection(projection2);
+
+/* SVG container **************************************** */
+	var svg = d3.select(hookId).append("svg")
+		.attr("id", title+"-orthographic_globe_locator_(wikiatlas_2014)")
+		.attr("width", width)
+		.attr("height", height)
+		.call(d3.behavior.drag()
+		  .origin(function() { 
+			var rotate = projection2.rotate(); 
+			return {x: 2 * rotate[0], y: -2 * rotate[1]}; 
+		})
+		  .on("drag", function() {
+			projection2.rotate([d3.event.x / 2, -d3.event.y / 2, projection2.rotate()[2]]);
+			svg.selectAll("path").attr("d", path);
+		  }))
+		.on("dblclick", function() {
+			projection2.rotate([ lon_central(), -(WNES1+WNES3)/2 +10 ]);
+			svg.selectAll("path").attr("d", path);
+		});
+
+/* SVG background *************************************** */
+// Blue circle
+	svg.append("circle")
+		.attr("class", "water")
+		.attr("cx", width/2)
+		.attr("cy", height/2)
+		.attr("r", width/2 )
+		.style({'fill':'#C6ECFF'})
+		.style({'stroke': '656565', 'stroke-width': 1.5});
+	// Gradiant	settings
+	var gradient = svg.append("svg:defs")
+		.append("svg:linearGradient")
+		.attr("id", "gradient")
+		.attr("x1", "0%")
+		.attr("y1", "0%")
+		.attr("fx1", "30%")
+		.attr("fy1", "30%")
+		.attr("x2", "100%")
+		.attr("y2", "100%")
+		.attr("spreadMethod", "pad");
+	gradient.append("svg:stop") 		// middle step setting
+		.attr("offset", "50%")
+		.attr("stop-color", "#FFF")
+		.attr("stop-opacity", 0.3);
+	gradient.append("svg:stop") 		// final step setting
+		.attr("offset", "100%")
+		.attr("stop-color", "#009")
+		.attr("stop-opacity", 0.3);
+	// Gradiant-circle
+	var circle = svg.append('circle') 	// append gradient to circle
+		.attr('cx', width / 2)
+		.attr('cy', height / 2)
+		.attr('r', width/2 )
+		.attr('fill', 'url(#gradient)');
+	
+
+/* GIS data injection *********************************** */
+d3.json("./data/world-110m-ids.json", function(error, world) {
+/**/  var countries = topojson.feature(world, world.objects.countries).features,
+/**/      i = -1,
+/**/      n = countries.length;
+	
+	var country = svg.selectAll(".country")
+		.data(topojson.feature(world, world.objects.countries).features)
+	.enter().append("path") 
+		.attr("id", function(d){ return d.id } )
+		.attr("class", "country")
+		.style("fill", "#FDFBEA")
+		.attr("d", path);
+	
+	var	focus = d3.selectAll("#"+title)
+			.style("fill", "#B10000"); 
+	
+	var boundaries = svg.append("path")
+        //.datum( topojson.mesh(world, world.objects.countries, function(a,b) { if (a!==b){var ret = b;}return ret;}))
+		.datum( topojson.mesh(world, world.objects.countries, function(a,b) { return a!==b; }))
+		.attr("class", "boundary")
+		.attr("d", path)
+		.style({'fill':'none','stroke': '#656565', 'stroke-width': 0.5});
+	
+	var graticule = svg.append("path")
+		.datum(d3.geo.graticule().step([20,20]))
+		.attr("class", "graticule")
+		.attr("d", path)
+		.style({'fill':'none', 'stroke':'#777', 'stroke-width': 0.5, 'stroke-opacity': 0.5});
+
+	var coast = svg.append("path")
+        //.datum( topojson.mesh(world, world.objects.countries, function(a,b) { if (a==b){var ret = b;}return ret;}))
+		.datum( topojson.mesh(world, world.objects.countries, function(a,b) { return a==b; }))
+        .attr("class", "Coast_border")
+		.style({'fill': 'none', 'stroke': '#0978AB', 'stroke-linejoin': 'round'})
+		.style({'stroke-width': 0.5 })
+		.attr("d", path);
+	
+	/* Red graniticule drawing
+	svg.append("path")
+		.attr("d", path(d3.geo.graticule()
+		.majorExtent([[WNES0, WNES3], [WNES2, WNES1]]).outline()))
+		.style({'fill': '#B10000', 'fill-opacity': 0.3, 'stroke': '#B10000', 'stroke-linejoin': 'round'})
+		.style({'stroke-width': 1 }); /**/
+	
+	//* Red polygon drawing
+	var redwindow = svg.append("path")
+		.datum({type: "Polygon", coordinates: [ //LineString
+			[[WNES0,WNES3]]
+			  .concat(parallel(WNES1, WNES0, WNES2))
+			  .concat(parallel(WNES3, WNES0, WNES2).reverse())
+			]})
+			.style({'fill': '#B10000', 'fill-opacity': 0.3, 'stroke': '#B10000', 'stroke-linejoin': 'round'})
+			.style({'stroke-width': 1 })
+			.attr("d", path); /**/
+	
+	var label = svg.append("text")
+		.attr("x", width / 2)
+		.attr("text-anchor","middle")
+		.text(title)
+		.attr("y", height * 57/100 );
+
+
+/* LOOP WORLD ****************************************************** */
+/*
+var step =  function() {
+	// var i=52;
+	if (++i >= n) { i = 0} ;
+	svg.transition();
+	var centroid = d3.geo.path()
+		.projection(function(d) { return d; })
+		.centroid;
+	var area = d3.geo.path()
+		.projection(function(d) { return d; })
+		.area;
+	var bounds = d3.geo.path()
+		.projection(function(d) { return d; })
+		.bounds;
+ 
+	d3.transition()
+		.delay(0)
+		.duration(3000)
+		.tween("rotate", function() {	
+			label.text(countries[i].id);
+			country.style("fill", function(d, j) { return j === i ? "#B10000" : "#FDFBEA";  });
+			var point = centroid(countries[i]);
+			var surface  = area(countries[i]);
+			var bb = bounds(countries[i]);
+			console.log(countries[i].id);
+			console.log("area: "+surface+"; bb: "+ JSON.stringify(bb)+"/"+i );
+			return function(t) {
+				projection2.rotate([-point[0], -point[1]+10]); // area of interest slide 10⁰ up
+				svg.selectAll("path").attr("d", path);
+				
+				var red_rect = function(){
+					if(countries[i].id === "Fiji"){  bb[0][0]=177;bb[1][0]=-179; }
+					if(countries[i].id === "Russia"){ bb[0][0]=19.5;bb[1][0]=-169;}
+					if(countries[i].id === "New Zealand"){ bb[0][0]=165.5;bb[1][0]=-176; }
+					if( true ){ return t=
+						{type: "Polygon", coordinates: [ 
+						[[bb[0][0]-5,bb[0][1]-5]]
+						.concat(parallel(bb[1][1]+5, bb[0][0]-5, bb[1][0]+5))
+						.concat(parallel(bb[0][1]-5, bb[0][0]-5, bb[1][0]+5).reverse())
+						]}
+					}
+				}
+				
+				// draw polygon (red frame) bigger than bb:
+				if (surface <15) { // is visible
+					redwindow.datum(//LineString 
+						red_rect
+					)
+					.style({'fill': '#B10000', "opacity": 1, 'fill-opacity': 0.3})
+					.style({'stroke-width': 1, 'stroke-opacity': 1, 'stroke': '#B10000', 'stroke-linejoin': 'round' })
+					.attr("d", path);
+				} else if (surface >15 ) { // isn't visible
+					redwindow.style({'opacity': 0}) ;
+				}
+
+			};
+		}) // runs transition
+		.each("end", function(){ return step(); } );
+  };
+step(); */
+
+});
+
+};
+
+
+/* ****************************************************** */
+/* LOCATION MAP MODULE  ********************************* 
+var location = function(selector,width,item,WNES) {
+	
+
+
+} //END fn.InjectMap*/
+
+
+
+var getTransform = function(d,padding_pc) {
+	var pd =  (100-(2*padding_pc))/100 || (100-(2*5))/100; // default to .9
+	/* GEOJSON PROFILING *********************************** */
+	var b = path.bounds(d); // [left, bottom], [right, top] // W S E N
+		// b.w = b[0][0]; b.s = b[0][1]; b.e = b[1][0]; b.n = b[1][1];
+		b.dx = Math.abs(b[1][0] - b[0][0]);	// distance x = E-W
+		b.dy = Math.abs(b[1][1] - b[0][1]);	// distance y = N-S
+		b.cx = (b[1][0] + b[0][0]) / 2; 	// center x
+		b.cy = (b[1][1] + b[0][1]) /2; 	// center y
+	//compute meaningful ratio, scale, translation
+	var t={};
+		t.ratio = ( b.dy / b.dx );
+		if (typeof height==="undefined"){ t.height=width*t.ratio;}
+		else { t.height = height; console.log("height");};
+		t.scale = pd * Math.min( width/b.dx, t.height/b.dy); // default: .9 * ( width / b.dx)
+		t.translate = [(width/2- t.scale * b.cx), (t.height/2 - t.scale * b.cy) ]; //translation
+	return t;
+}
+
+/* ****************************************************** */
+/* DOWNLOAD BUTTONS MODULE ****************************** */
+var downloadButtons = function(selector, projection){
+	var proj = projection || 0;
+d3.select(selector).html("").append("a")
+	.attr("class", "download")
+	.style({
+		background: "#333",
+		color: "#FFF",
+		"font-weight": 900, 
+		border: "2px solid #B10000",
+		padding: "4px", 
+		margin:"4px",
+		"text-decoration":"none"})
+	.on("click", function () { 
+	// clip if it's a map:
+		if(proj !== 0 ) {
+			// CLIPING DESTROY THE MAP, how to save the clip dom in variable ?
+			var dx = svg.attr("width"); var dy = svg.attr("height");
+	  		projection.clipExtent([[0,0],[dx,dy]]); console.log(projection.scale()); 
+			svg.selectAll("path").attr("d", path);
+		}
+	// download:
+		console.log('2'); 
+		var e = document.createElement('script');
+		if (window.location.protocol === 'https:') { e.setAttribute('src', 'https://rawgit.com/NYTimes/svg-crowbar/gh-pages/svg-crowbar.js'); } 
+		else { e.setAttribute('src', 'http://nytimes.github.com/svg-crowbar/svg-crowbar.js'); } 
+		e.setAttribute('class', 'svg-crowbar'); 
+		document.body.appendChild(e); })
+	.html("<big>⇩</big> Download"); /* -- Works on Chrome. Feedback welcome for others web browsers.*/
+}
+
+
+/* ****************************************************** */
+/* SELECT LANGUAGE MODULE ******************************* */
+// 1_wiki_translate
+
+
+/* ****************************************************** */
+/* SELECT ITEM MODULE *********************************** */
+// in _location
+
+
+/* ****************************************************** */
+/* WIKIPEDIA CSS MODULE ********************************* */
+var wp={};
+/* Strokes & dash *************************************** */
+wp.stroke = {
+	0: "stroke:none;stroke-linejoin:round;",
+	no:"stroke:none;stroke-linejoin:round;",
+	sm:"stroke-width:1.0px;stroke-linejoin:round;",
+	md:"stroke-width:1.5px;stroke-linejoin:round;",
+	lg:"stroke-width:2.0px;stroke-linejoin:round;",
+	xl:"stroke-width:3.0px;stroke-linejoin:round;"}
+wp.dash = { // http://jsfiddle.net/tgq925aL/
+	no: "stroke-dasharray:none;",		//
+	sm: "stroke-dasharray: 4,4;",		// normal
+	md: "stroke-dasharray: 8,4;",		// 
+	xl: "stroke-dasharray: 16,4,3,4;"	// i18l
+};
+/* Location map ***************************************** */
+// https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Maps/Conventions
+wp.location = { 
+	no:        "fill:none;",
+	locator:   "fill:#B10000;",
+	focus :    "fill:#FEFEE9;",
+	land  :    "fill:#E0E0E0;",
+	border:    "fill: none; stroke:#646464;",	// line_sm
+	waterline: "fill: none; stroke:#0978AB;",	// line_sm
+	waterarea: "fill:#C6ECFF;",
+	temp: "fill-opacity:0.6;stroke-dasharray:4,4;dasharray:4, 4;",
+};
+/* Hash patterns **************************************** */
+//Pattern injection : disputed-in, disputed-out
+var injectPattern = function(){
+	// location maps. Note: "hash2_4" means "hash pattern overlay, 2px colored (on), 4px not colored (off)".
+	var pattern = svg.append("defs")
+		.append("pattern")
+			.attr({ id:"hash2_4", width:"6", height:"6", patternUnits:"userSpaceOnUse", patternTransform:"rotate(-45)"})
+		.append("rect")
+			.attr({ width:"2", height:"6", transform:"translate(0,0)", fill:"#E0E0E0" }); // (!) fill: wp.location.land
+	 var pattern = svg.append("defs")
+		.append("pattern")
+			.attr({ id:"hash4_2", width:"6", height:"6", patternUnits:"userSpaceOnUse", patternTransform:"rotate(-45)"})
+		.append("rect")
+			.attr({ width:"2", height:"6", transform:"translate(0,0)", fill:"#FEFEE9" }); // (!) fill: wp.location.focus
+// To style shapes:
+//    .attr("fill", function(d){ return d.properties.L0 === target? "url(#hash2_4)": "url(#hash4_2)"} )
+}
+
+/* Topographic map ************************************** */
+// http://roadtolarissa.com/blog/2015/01/04/coloring-maps-with-d3/
+// D: Domain, D: Data. 0m,500m,3000m,5000m are of the domain.
+// http://gka.github.io/palettes/#diverging|c0=#002040,#71ABD8,#D8F2FE|c1=#94BF8B,#A8C68F,#BDCC96,#D1D7AB,#E1E4B5,#EFEBC0,#E8E1B6,#DED6A3,#D3CA9D,#CAB982,#C3A76B,#B9985A,#AA8753,#AC9A7C,#BAAE9A,#CAC3B8,#E0DED8,#F5F4F2,#FFFFFF|steps=30|bez0=1|bez1=0|coL0=0|coL1=0
+wp.topographic = {
+	water: function(){ return d3.scale.threshold().range(['#002040','#71ABD8','#D8F2FE']);},
+	plain: function(){ return d3.scale.threshold().range([])},
+	hill:  function(){ return d3.scale.threshold().range([])},
+	mount: function(){ return d3.scale.threshold().range([])},
+}
+/*
+if(min<0){ water; }
+if((min<  500) && (max >   0 && max< 9000)) { return plain }
+if((min< 2000) && (max > 500 && max< 9000)) { return hill  }
+if((min< 9000) && (max >2000 && max< 9000)) { return mount }
+*/
+
+/* ****************************************************** */
+/* REPROJECTION TOOLS MODULE **************************** */
+
+
+
+

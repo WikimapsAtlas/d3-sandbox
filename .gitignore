@@ -1,0 +1,7 @@
+# Folder/all
+/arch/*
+/data/*
+
+# Files (globes)
+#*.zip
+
