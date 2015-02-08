@@ -74,6 +74,10 @@ h3 { font-weight: bold;}
 .shell-body:before { content: "$ "; color: #45D40C; }
 .text-warning { color: #f0ad4e; }
 .input-group-addon.head { width: 6em; }
+
+.modal {
+    padding-top:25%;
+}
 </style>
 
 </head>
@@ -154,6 +158,23 @@ h3 { font-weight: bold;}
 			</select>
 		</div>
 	</div>
+		<div class="form-group col-xs-6 col-md-3">
+		<label class="sr-only" for="PLACES">Number of major cities to keep.</label>
+		<div class="input-group">
+			<div class="input-group-addon head">PLACES:</div>
+			<select class="form-control" id="PLACES">
+			  <option>0</option>
+			  <option>5</option>
+			  <option>10</option>
+			  <option>15</option>
+			  <option selected>20</option>
+			  <option >30</option>
+			  <option>40</option>
+			  <option>50</option>
+			  <option>60</option>
+			</select>
+		</div>
+	</div>
 	</div><!-- end row-->
 	
   <button class="btn btn-success pull-right confirm">Confirm</button>
@@ -208,9 +229,23 @@ $(function () {
   $('[data-toggle="tooltip"]').tooltip()
 })	
 </script>
+<div id="Modal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #B14400;" >
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                <h4 class="modal-title" style="color:white;">Warning</h4>
+            </div>
+            <div class="modal-body">
+            </div>
+        </div>
+    </div>
+</div>
 <script>
+/* D3 world map ***************************************** */
 var width = 960,
-    height = width/960*500;
+	height = width / 960 * 500 ;
+	console.log(windowWidth, width, height)
 
 var projection = d3.geo.equirectangular();
 
@@ -231,7 +266,7 @@ brush = d3.svg.brush()
 
 var svg = d3.select("#hook").append("svg")
     .attr("width", width)
-    .attr("height", height);
+	.attr("height", height);
 
 svg.append("defs").append("path")
     .datum({type: "Sphere"})
@@ -308,18 +343,39 @@ var confirm = function() {
 		E2 = $("#EAST").val(),
 		S2 = $("#SOUTH").val(),
 		ITEM2=$("#ITEM").val(),
-		SLICES2 = $("#SLICES option:selected" ).text();
-	var command = "make -f master.makefile ITEM="+ITEM2+" WEST="+W2+" NORTH="+N2+" EAST="+E2+" SOUTH="+S2+" SLICES="+SLICES2;
+		SLICES2 = $("#SLICES option:selected" ).text(),
+		PLACES2 = $("#PLACES option:selected" ).text();
+	var command = "make -f master.makefile ITEM="+ITEM2+" WEST="+W2+" NORTH="+N2+" EAST="+E2+" SOUTH="+S2+" SLICES="+SLICES2+" PLACES="+PLACES2;
     $(".shell-body").text(command);
 	var extent = brush.extent();
 	console.log("ext: "+ x(extent[0][0]))
+	console.log(W2)
+
 	
 	d3.select(".extent") //select all the just-created rectangles
 		.attr("x", projection([W2,N2])[0])//x(extent[0][0]))  // redraw rectangle on same value ! need reprojection of W
 		.attr("y", projection([W2,N2])[1])
 		.attr("width", projection([E2,S2])[0]-projection([W2,N2])[0])
 		.attr("height", projection([E2,S2])[1]-projection([W2,N2])[1]); //set their height
+if ( W2==="" || N2==="" || E2===""||S2===""||ITEM2==="") {
+    $("#Modal").modal('show');
+	var body= '<p>One or several fields are empty.</p>'
+              +'<button type="button" class="btn btn-success pull-right" data-dismiss="modal">Close</button>'
+              +'<p class="text-warning"><b>Solution: fill all fields!</b></p>';
+    $(".modal-body").html(body);
+};
+
 }
 $(".confirm").on("click", confirm);
+	
+/* MODAL Window size ****************************************************** */
+if ( $(window).width()< 1000) {
+    $("#Modal").modal('show');
+	var windowWidth = $(window).width();
+	var body= '<p>This service requires a minimum window\'s width of <b>1000px</b>. Current width is <b>'+windowWidth+'px</b>.</p>'
+              +'<button type="button" class="btn btn-success pull-right" data-dismiss="modal">Close</button>'
+              +'<p class="text-warning"><b>Solution: use a larger device.</b></p>';
+    $(".modal-body").html(body);  
+};
 </script>
 </body>
