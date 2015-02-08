@@ -342,15 +342,13 @@ var confirm = function() {
 		N2 = $("#NORTH").val(),
 		E2 = $("#EAST").val(),
 		S2 = $("#SOUTH").val(),
-		ITEM2=$("#ITEM").val(),
+		ITEM2=$("#ITEM").val(), // .replace(/ |'|"/g,"_"),
 		SLICES2 = $("#SLICES option:selected" ).text(),
 		PLACES2 = $("#PLACES option:selected" ).text();
 	var command = "make -f master.makefile ITEM="+ITEM2+" WEST="+W2+" NORTH="+N2+" EAST="+E2+" SOUTH="+S2+" SLICES="+SLICES2+" PLACES="+PLACES2;
     $(".shell-body").text(command);
 	var extent = brush.extent();
 	console.log("ext: "+ x(extent[0][0]))
-	console.log(W2)
-
 	
 	d3.select(".extent") //select all the just-created rectangles
 		.attr("x", projection([W2,N2])[0])//x(extent[0][0]))  // redraw rectangle on same value ! need reprojection of W
@@ -360,8 +358,8 @@ var confirm = function() {
 if ( W2==="" || N2==="" || E2===""||S2===""||ITEM2==="") {
     $("#Modal").modal('show');
 	var body= '<p>One or several fields are empty.</p>'
-              +'<button type="button" class="btn btn-success pull-right" data-dismiss="modal">Close</button>'
-              +'<p class="text-warning"><b>Solution: fill all fields!</b></p>';
+             +'<button type="button" class="btn btn-success pull-right" data-dismiss="modal">Close</button>'
+             +'<p class="text-warning"><b>Solution: fill all fields!</b></p>';
     $(".modal-body").html(body);
 };
 
@@ -371,10 +369,9 @@ $(".confirm").on("click", confirm);
 /* MODAL Window size ****************************************************** */
 if ( $(window).width()< 1000) {
     $("#Modal").modal('show');
-	var windowWidth = $(window).width();
-	var body= '<p>This service requires a minimum window\'s width of <b>1000px</b>. Current width is <b>'+windowWidth+'px</b>.</p>'
-              +'<button type="button" class="btn btn-success pull-right" data-dismiss="modal">Close</button>'
-              +'<p class="text-warning"><b>Solution: use a larger device.</b></p>';
+	var body= '<p>This service requires a minimum window\'s width of <b>1000px</b>. Current width is <b>'+$(window).width()+'px</b>.</p>'
+             +'<button type="button" class="btn btn-success pull-right" data-dismiss="modal">Close</button>'
+             +'<p class="text-warning"><b>Solution: use a larger device.</b></p>';
     $(".modal-body").html(body);  
 };
 </script>
