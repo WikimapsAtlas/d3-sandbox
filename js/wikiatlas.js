@@ -7,17 +7,8 @@
 /* ****************************************************** */
 /* SUGAR ************************************************ */
 
-var graticule = function($D3selector,step) {
-	d3.geo.graticule().step([step, step]);
-	$D3selector.append("path")
-        .datum(graticule)
-        .attr("class", "graticule")
-        .attr("d", path)
-		.style({'fill': 'none', 'stroke': '#0978AB', 'stroke-linejoin': 'round'})
-		.style({'stroke-width': 0.5 });
-}
 // Function Click > Console (for fun)
-    function click(a){console.log(a.properties.name);}
+    function click(a){ var name = a.properties.name || a.id ; console.log(name);}
     function dblclick(a){window.location.assign("http://en.wikipedia.org/wiki/"+a.properties.name, '_blank');}
 
 /* MATH TOOLKIT ***************************************** */
@@ -32,7 +23,84 @@ function normalise(x) {
 }
 
 /* ****************************************************** */
-/* LOCATOR MAP MODULE ******************************* */
+/* WIKIPEDIA CSS MODULE ********************************* */
+var wp={};
+/* Strokes & dash *************************************** */
+wp.stroke = {
+	0: "stroke:none;stroke-linejoin:round;",
+	no:"stroke:none;stroke-linejoin:round;",
+	sm:"stroke-width:1.0px;stroke-linejoin:round;",
+	md:"stroke-width:1.5px;stroke-linejoin:round;",
+	lg:"stroke-width:2.0px;stroke-linejoin:round;",
+	xl:"stroke-width:3.0px;stroke-linejoin:round;"}
+wp.dash = { // http://jsfiddle.net/tgq925aL/
+	no: "stroke-dasharray:none;",		//
+	sm: "stroke-dasharray: 4,4;",		// normal
+	md: "stroke-dasharray: 8,4;",		// 
+	xl: "stroke-dasharray: 16,4,3,4;"	// i18l
+};
+/* Location map ***************************************** */
+// https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Maps/Conventions
+wp.location = { 
+	no:        "fill:none;",
+	locator:   "fill:#B10000;",
+	focus :    "fill:#FEFEE9;",
+	land  :    "fill:#E0E0E0;",
+	border:    "fill: none; stroke:#646464;",	// line_sm
+	waterline: "fill: none; stroke:#0978AB;",	// line_sm
+	waterarea: "fill:#C6ECFF;",
+	temp: "fill-opacity:0.6;stroke-dasharray:4,4;dasharray:4, 4;",
+};
+/* Hash patterns **************************************** */
+//Pattern injection : disputed-in, disputed-out
+var injectPattern = function(selector){
+	// location maps. Note: "hash2_4" means "hash pattern overlay, 2px colored (on), 4px not colored (off)".
+	var pattern = d3.select(selector).append("defs")
+		.append("pattern")
+			.attr({ id:"hash2_4", width:"6", height:"6", patternUnits:"userSpaceOnUse", patternTransform:"rotate(-45)"})
+		.append("rect")
+			.attr({ width:"2", height:"6", transform:"translate(0,0)", fill:"#E0E0E0" }); // (!) fill: wp.location.land
+	 var pattern = d3.select(selector).append("defs")
+		.append("pattern")
+			.attr({ id:"hash4_2", width:"6", height:"6", patternUnits:"userSpaceOnUse", patternTransform:"rotate(-45)"})
+		.append("rect")
+			.attr({ width:"2", height:"6", transform:"translate(0,0)", fill:"#FEFEE9" }); // (!) fill: wp.location.focus
+// To style shapes:
+//    .attr("fill", function(d){ return d.properties.L0 === target? "url(#hash2_4)": "url(#hash4_2)"} )
+}
+
+/* Topographic map ************************************** */
+// http://roadtolarissa.com/blog/2015/01/04/coloring-maps-with-d3/
+// D: Domain, D: Data. 0m,500m,3000m,5000m are of the domain.
+// http://gka.github.io/palettes/#diverging|c0=#002040,#71ABD8,#D8F2FE|c1=#94BF8B,#A8C68F,#BDCC96,#D1D7AB,#E1E4B5,#EFEBC0,#E8E1B6,#DED6A3,#D3CA9D,#CAB982,#C3A76B,#B9985A,#AA8753,#AC9A7C,#BAAE9A,#CAC3B8,#E0DED8,#F5F4F2,#FFFFFF|steps=30|bez0=1|bez1=0|coL0=0|coL1=0
+wp.topographic = {
+	water: function(){ return d3.scale.threshold().range(['#002040','#71ABD8','#D8F2FE']);},
+	plain: function(){ return d3.scale.threshold().range([])},
+	hill:  function(){ return d3.scale.threshold().range([])},
+	mount: function(){ return d3.scale.threshold().range([])},
+}
+/*
+if(min<0){ water; }
+if((min<  500) && (max >   0 && max< 9000)) { return plain }
+if((min< 2000) && (max > 500 && max< 9000)) { return hill  }
+if((min< 9000) && (max >2000 && max< 9000)) { return mount }
+*/
+
+/* ****************************************************** */
+/* LOCATOR MAP MODULE *********************************** */
+var graticule = function($D3selector,step) {
+	d3.geo.graticule().step([step, step]);
+	$D3selector.append("path")
+        .datum(graticule)
+        .attr("class", "graticule")
+        .attr("d", path)
+		.style({'fill': 'none', 'stroke': '#0978AB', 'stroke-linejoin': 'round'})
+		.style({'stroke-width': 0.5 });
+}
+
+
+/* ****************************************************** */
+/* LOCATOR MAP MODULE *********************************** */
 var localisator = function (hookId,localisator_width, title, WNES0, WNES1, WNES2, WNES3) {
 /* Init ************************************************* */
 	var width  = 1*localisator_width,
@@ -312,69 +380,7 @@ d3.select(selector).html("").append("a")
 // in _location
 
 
-/* ****************************************************** */
-/* WIKIPEDIA CSS MODULE ********************************* */
-var wp={};
-/* Strokes & dash *************************************** */
-wp.stroke = {
-	0: "stroke:none;stroke-linejoin:round;",
-	no:"stroke:none;stroke-linejoin:round;",
-	sm:"stroke-width:1.0px;stroke-linejoin:round;",
-	md:"stroke-width:1.5px;stroke-linejoin:round;",
-	lg:"stroke-width:2.0px;stroke-linejoin:round;",
-	xl:"stroke-width:3.0px;stroke-linejoin:round;"}
-wp.dash = { // http://jsfiddle.net/tgq925aL/
-	no: "stroke-dasharray:none;",		//
-	sm: "stroke-dasharray: 4,4;",		// normal
-	md: "stroke-dasharray: 8,4;",		// 
-	xl: "stroke-dasharray: 16,4,3,4;"	// i18l
-};
-/* Location map ***************************************** */
-// https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Maps/Conventions
-wp.location = { 
-	no:        "fill:none;",
-	locator:   "fill:#B10000;",
-	focus :    "fill:#FEFEE9;",
-	land  :    "fill:#E0E0E0;",
-	border:    "fill: none; stroke:#646464;",	// line_sm
-	waterline: "fill: none; stroke:#0978AB;",	// line_sm
-	waterarea: "fill:#C6ECFF;",
-	temp: "fill-opacity:0.6;stroke-dasharray:4,4;dasharray:4, 4;",
-};
-/* Hash patterns **************************************** */
-//Pattern injection : disputed-in, disputed-out
-var injectPattern = function(){
-	// location maps. Note: "hash2_4" means "hash pattern overlay, 2px colored (on), 4px not colored (off)".
-	var pattern = svg.append("defs")
-		.append("pattern")
-			.attr({ id:"hash2_4", width:"6", height:"6", patternUnits:"userSpaceOnUse", patternTransform:"rotate(-45)"})
-		.append("rect")
-			.attr({ width:"2", height:"6", transform:"translate(0,0)", fill:"#E0E0E0" }); // (!) fill: wp.location.land
-	 var pattern = svg.append("defs")
-		.append("pattern")
-			.attr({ id:"hash4_2", width:"6", height:"6", patternUnits:"userSpaceOnUse", patternTransform:"rotate(-45)"})
-		.append("rect")
-			.attr({ width:"2", height:"6", transform:"translate(0,0)", fill:"#FEFEE9" }); // (!) fill: wp.location.focus
-// To style shapes:
-//    .attr("fill", function(d){ return d.properties.L0 === target? "url(#hash2_4)": "url(#hash4_2)"} )
-}
 
-/* Topographic map ************************************** */
-// http://roadtolarissa.com/blog/2015/01/04/coloring-maps-with-d3/
-// D: Domain, D: Data. 0m,500m,3000m,5000m are of the domain.
-// http://gka.github.io/palettes/#diverging|c0=#002040,#71ABD8,#D8F2FE|c1=#94BF8B,#A8C68F,#BDCC96,#D1D7AB,#E1E4B5,#EFEBC0,#E8E1B6,#DED6A3,#D3CA9D,#CAB982,#C3A76B,#B9985A,#AA8753,#AC9A7C,#BAAE9A,#CAC3B8,#E0DED8,#F5F4F2,#FFFFFF|steps=30|bez0=1|bez1=0|coL0=0|coL1=0
-wp.topographic = {
-	water: function(){ return d3.scale.threshold().range(['#002040','#71ABD8','#D8F2FE']);},
-	plain: function(){ return d3.scale.threshold().range([])},
-	hill:  function(){ return d3.scale.threshold().range([])},
-	mount: function(){ return d3.scale.threshold().range([])},
-}
-/*
-if(min<0){ water; }
-if((min<  500) && (max >   0 && max< 9000)) { return plain }
-if((min< 2000) && (max > 500 && max< 9000)) { return hill  }
-if((min< 9000) && (max >2000 && max< 9000)) { return mount }
-*/
 
 /* ****************************************************** */
 /* REPROJECTION TOOLS MODULE **************************** */

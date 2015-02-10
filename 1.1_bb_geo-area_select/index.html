@@ -26,7 +26,8 @@ svg { border: 1px solid #CCC; }
 }
 </style>
 <style>
- body { background-image: url('http://subtlepatterns.com/patterns/hixs_pattern_evolution.png'); }
+/* BOOTSTRAP+ ******************************************* */
+body { background-image: url('http://subtlepatterns.com/patterns/hixs_pattern_evolution.png'); }
 h3 { font-weight: bold;}
 .panel-default>.panel-heading {
 	color: #333;
@@ -39,10 +40,10 @@ h3 { font-weight: bold;}
 	color: #fff;
 	text-shadow: 0 -1px 0 #900;
 }
+/* SHELL ********************************************** */
 .shell{	box-shadow: 0 0 2em rgba(0,0,0,0.4); 
 	margin: 0em 3em 0em 3em; 
-	max-width: 60em;}
-
+	max-width: 60em; }
 .shell-top {
 	text-align: center;
 	color: #525252;
@@ -72,12 +73,12 @@ h3 { font-weight: bold;}
 	min-height: 2em;
 }
 .shell-body:before { content: "$ "; color: #45D40C; }
-.text-warning { color: #f0ad4e; }
+
+.input-group { min-width: 100%; }
 .input-group-addon.head { width: 6em; }
 
-.modal {
-    padding-top:25%;
-}
+.text-warning { color: #f0ad4e; }
+.modal { padding-top:25%; }
 </style>
 
 </head>
@@ -131,15 +132,17 @@ h3 { font-weight: bold;}
 			<div class="input-group-addon head">SOUTH:</div>
 			<input type="text" class="form-control" id="SOUTH" placeholder="56.7">
 		</div>
-	</div>
-	<!-- END OF FIRST LINE -->
-	<div class="form-group col-xs-6 col-md-3">
+	</div><!-- /FIRST ROW -->
+	<!-- 2ND ROW -->
+	<!-- Title : -->
+	<div class="form-group col-xs-12 col-md-6">
 		<label class="sr-only" for="title">ITEM (as a string without space or special character)</label>
-		<div class="input-group">
+		<div class="input-group full">
 			<div class="input-group-addon head">ITEM:</div>
-			<input type="text" class="form-control" id="ITEM" placeholder="Area_or_topic_(no_space_no_weird)">
+			<input type="text" class="form-control" id="ITEM" placeholder="Title of the maps (no special characters).">
 		</div>
 	</div>
+	<!-- Slices : -->
 	<div class="form-group col-xs-6 col-md-3">
 		<label class="sr-only" for="SLICES">Topographic SLICES, default to 8, must be >2.</label>
 		<div class="input-group">
@@ -158,7 +161,8 @@ h3 { font-weight: bold;}
 			</select>
 		</div>
 	</div>
-		<div class="form-group col-xs-6 col-md-3">
+	<!-- Places : -->
+	<div class="form-group col-xs-6 col-md-3">
 		<label class="sr-only" for="PLACES">Number of major cities to keep.</label>
 		<div class="input-group">
 			<div class="input-group-addon head">PLACES:</div>
@@ -232,7 +236,7 @@ $(function () {
 <div id="Modal" class="modal fade">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header" style="background-color: #B14400;" >
+            <div class="modal-header" style="background-color: #E6711B;" >
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
                 <h4 class="modal-title" style="color:white;">Warning</h4>
             </div>
@@ -245,7 +249,6 @@ $(function () {
 /* D3 world map ***************************************** */
 var width = 960,
 	height = width / 960 * 500 ;
-	console.log(windowWidth, width, height)
 
 var projection = d3.geo.equirectangular();
 
@@ -357,7 +360,7 @@ var confirm = function() {
 		.attr("height", projection([E2,S2])[1]-projection([W2,N2])[1]); //set their height
 if ( W2==="" || N2==="" || E2===""||S2===""||ITEM2==="") {
     $("#Modal").modal('show');
-	var body= '<p>One or several fields are empty.</p>'
+	var body= '<p>Step 2 has one or several fields empty.</p>'
              +'<button type="button" class="btn btn-success pull-right" data-dismiss="modal">Close</button>'
              +'<p class="text-warning"><b>Solution: fill all fields!</b></p>';
     $(".modal-body").html(body);

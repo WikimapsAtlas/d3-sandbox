@@ -35,19 +35,23 @@ var g = svg.append("g");
 var projection = d3.geo.equirectangular()
       .scale(1)
       .translate([0, 0]);
-
 var path = d3.geo.path()
     .projection(projection);
 
 
-d3.json("../output/world-1e3/admin_0.topo.json", function(error, json) { //does transform the inputed .json !!!! Print & Check in console
+d3.json("../output/world-1e3.5/administrative.topo.json", function(error, json) { //does transform the inputed .json !!!! Print & Check in console
 	var L0 =  json.objects.admin_0,
-		L1 =  json.objects.admin_1;
-	var countries = topojson.feature(json, L0).features,
+		L1 =  json.objects.admin_1,
+		countries = topojson.feature(json, L0).features,
   		zeroin = countries.filter(function(d) { return d.id ==="India"; })[0]; /* */
   	/* / state = states.features.filter(function(d) { return d.geometry.type === "MultiPolygon"; })[5]; /* */
-	console.log(zeroin);
-	zoomon(zeroin, width);
+	
+	// Projection recalculated
+	var t = getTransform(L0,5);
+	projection
+		.scale(t.scale)
+		.translate(t.translate);
+	svg.attr("height", t.height);
 
 	//oceans
 	var bg = g.append("g").attr("id","water")
@@ -91,20 +95,6 @@ d3.json("../output/world-1e3/admin_0.topo.json", function(error, json) { //does 
 });
 
 
-function zoomon(d, width, padding_pc){
-	t = getTransform(d,padding_pc);
-	projection
-		.scale(t.scale)
-		.translate(t.translate);
-	svg.attr("height", t.height);
-}
-function newproj(d, width, padding_pc){
-	t = getTransform(d,padding_pc);
-	return projection
-		.scale(t.scale)
-		.translate(t.translate);
-}
-
 function clicked(d) {
   if (active.node() === this) return reset();
   active.classed("active", false);
@@ -134,9 +124,6 @@ function reset() {
 }
 // D3js transition mess?
 // http://stackoverflow.com/questions/17045826/
-
-	
-
 
 
 
