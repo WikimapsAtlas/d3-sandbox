@@ -296,24 +296,24 @@ var mybrush = svg.append("g")
     .call(brush);
 /* ****************************************************** */
 /* INJECT GIS ******************************************* */
-d3.json("./world-110m-ids.json", function(error, world) {
+d3.json("../output/world-1e3/administrative.topo.json", function(error, json) {
+/*best d3: in locationMap*/
 	var country = svg.selectAll(".country")
-		.data(topojson.feature(world, world.objects.countries).features)
-	.enter().insert("path", ".graticule")
+		.data(topojson.feature(json, json.objects.admin_0).features)
+		.enter().insert("path", ".graticule")
 		.attr("id", function(d){ return d.id } )
 		.attr("class", "country")
 		.style("fill", "#FDFBEA")
 		.attr("d", path);
 	var boundaries = svg.insert("path", ".graticule")
         //.datum( topojson.mesh(world, world.objects.countries, function(a,b) { if (a!==b){var ret = b;}return ret;}))
-		.datum( topojson.mesh(world, world.objects.countries, function(a,b) { return a!==b; }))
+		.datum( topojson.mesh(json, json.objects.admin_0, function(a,b) { return a!==b; }))
 		.attr("class", "boundary")
 		.attr("d", path)
 		.style({'fill':'none','stroke': '#656565', 'stroke-width': 0.5});
-
 	var coast = svg.insert("path", ".graticule")
         //.datum( topojson.mesh(world, world.objects.countries, function(a,b) { if (a==b){var ret = b;}return ret;}))
-		.datum( topojson.mesh(world, world.objects.countries, function(a,b) { return a==b; }))
+		.datum( topojson.mesh(json, json.objects.admin_0, function(a,b) { return a==b; }))
         .attr("class", "Coast_border")
 		.style({'fill': 'none', 'stroke': '#0978AB', 'stroke-linejoin': 'round'})
 		.style({'stroke-width': 1 })

@@ -101,27 +101,25 @@ var graticule = function($D3selector,step) {
 
 /* ****************************************************** */
 /* LOCATOR MAP MODULE *********************************** */
-var localisator = function (hookId,localisator_width, title, WNES0, WNES1, WNES2, WNES3) {
+var localisator = function (hookId,width, title, WEST, NORTH, EAST, SOUTH) {
 /* Init ************************************************* */
-	var width  = 1*localisator_width,
-    	height = 1*localisator_width;
+	var width  = width,
+    	height = width;
 	var lon_central = function(){ 
 		var num;
-		if(WNES2<WNES0){ num= -(WNES0+WNES2)/2+180; }
-		else{ num= -(WNES0+WNES2)/2; }
+		if(EAST<WEST){ num= -(WEST+EAST)/2+180; }
+		else{ num= -(WEST+EAST)/2; }
 		return num;
 	};
 
 	var proj = d3.geo.orthographic()
-    	.scale(1/2*localisator_width)
-    	.rotate([ lon_central(), -(WNES1+WNES3)/2 +10 ]); // orthographic + 10⁰ to simulate real life globe watching.
-
-	var projection2 = proj
+    	.scale(1/2*width)
+    	.rotate([ lon_central(), -(NORTH+SOUTH)/2 +10 ])
 		.translate([width / 2 , height / 2 ])
 		.clipAngle(90);
 
 	var path = d3.geo.path()
-		.projection(projection2);
+		.projection(proj);
 
 /* SVG container **************************************** */
 	var svg = d3.select(hookId).append("svg")
@@ -130,15 +128,15 @@ var localisator = function (hookId,localisator_width, title, WNES0, WNES1, WNES2
 		.attr("height", height)
 		.call(d3.behavior.drag()
 		  .origin(function() { 
-			var rotate = projection2.rotate(); 
+			var rotate = proj.rotate(); 
 			return {x: 2 * rotate[0], y: -2 * rotate[1]}; 
 		})
 		  .on("drag", function() {
-			projection2.rotate([d3.event.x / 2, -d3.event.y / 2, projection2.rotate()[2]]);
+			proj.rotate([d3.event.x / 2, -d3.event.y / 2, proj.rotate()[2]]);
 			svg.selectAll("path").attr("d", path);
 		  }))
 		.on("dblclick", function() {
-			projection2.rotate([ lon_central(), -(WNES1+WNES3)/2 +10 ]);
+			proj.rotate([ lon_central(), -(NORTH+SOUTH)/2 +10 ]);
 			svg.selectAll("path").attr("d", path);
 		});
 
@@ -179,61 +177,67 @@ var localisator = function (hookId,localisator_width, title, WNES0, WNES1, WNES2
 	
 
 /* GIS data injection *********************************** */
-d3.json("./data/world-110m-ids.json", function(error, world) {
-/**/  var countries = topojson.feature(world, world.objects.countries).features,
-/**/      i = -1,
-/**/      n = countries.length;
+d3.json("./output/world-1e3/administrative.topo.json", function(error, Stone) {
+// data organized
+    var countries = topojson.feature(Stone, Stone.objects.admin_0),
+        subunits  = topojson.feature(Stone, Stone.objects.admin_1),
+        disputed  = topojson.feature(Stone, Stone.objects.disputed),
+        places    = topojson.feature(Stone, Stone.objects.places),
+        neighbors = topojson.neighbors(Stone.objects.admin_1.geometries),
+/**/	i = -1,
+/**/    n = countries.length;
 	
 	var country = svg.selectAll(".country")
-		.data(topojson.feature(world, world.objects.countries).features)
+		.data(countries.features)
 	.enter().append("path") 
-		.attr("id", function(d){ return d.id } )
+		.attr("id", function(d){ return d.id.replace(/ |\.|'/g, "_") } )
+		.attr("name", function(d){ return d.id } )
 		.attr("class", "country")
-		.style("fill", "#FDFBEA")
+		.attr("style","fill:#FDFBEA")
 		.attr("d", path);
 	
-	var	focus = d3.selectAll("#"+title)
-			.style("fill", "#B10000"); 
+	var	focus = d3.selectAll("#"+title.replace(/ |\.|'/g, "_"))
+			.attr("style","fill:#B10000;");
 	
 	var boundaries = svg.append("path")
         //.datum( topojson.mesh(world, world.objects.countries, function(a,b) { if (a!==b){var ret = b;}return ret;}))
-		.datum( topojson.mesh(world, world.objects.countries, function(a,b) { return a!==b; }))
+		.datum( topojson.mesh(Stone, Stone.objects.admin_0, function(a,b) { return a!==b; }))
 		.attr("class", "boundary")
-		.attr("d", path)
-		.style({'fill':'none','stroke': '#656565', 'stroke-width': 0.5});
+		.attr("style","fill:none;stroke: #656565; stroke-width: 0.5;")
+		.attr("d", path);
 	
 	var graticule = svg.append("path")
 		.datum(d3.geo.graticule().step([20,20]))
 		.attr("class", "graticule")
-		.attr("d", path)
-		.style({'fill':'none', 'stroke':'#777', 'stroke-width': 0.5, 'stroke-opacity': 0.5});
+		.attr("style","fill:none;stroke:#777;stroke-width: 0.5;stroke-opacity: 0.5")
+		.attr("d", path);
 
 	var coast = svg.append("path")
         //.datum( topojson.mesh(world, world.objects.countries, function(a,b) { if (a==b){var ret = b;}return ret;}))
-		.datum( topojson.mesh(world, world.objects.countries, function(a,b) { return a==b; }))
+		.datum( topojson.mesh(Stone, Stone.objects.admin_0, function(a,b) { return a==b; }))
         .attr("class", "Coast_border")
-		.style({'fill': 'none', 'stroke': '#0978AB', 'stroke-linejoin': 'round'})
+		.attr("style", "fill: none; stroke: #0978AB; stroke-linejoin: round;")
 		.style({'stroke-width': 0.5 })
 		.attr("d", path);
 	
-	/* Red graniticule drawing
-	svg.append("path")
-		.attr("d", path(d3.geo.graticule()
-		.majorExtent([[WNES0, WNES3], [WNES2, WNES1]]).outline()))
-		.style({'fill': '#B10000', 'fill-opacity': 0.3, 'stroke': '#B10000', 'stroke-linejoin': 'round'})
-		.style({'stroke-width': 1 }); /**/
 	
 	//* Red polygon drawing
-	var redwindow = svg.append("path")
-		.datum({type: "Polygon", coordinates: [ //LineString
-			[[WNES0,WNES3]]
-			  .concat(parallel(WNES1, WNES0, WNES2))
-			  .concat(parallel(WNES3, WNES0, WNES2).reverse())
-			]})
-			.style({'fill': '#B10000', 'fill-opacity': 0.3, 'stroke': '#B10000', 'stroke-linejoin': 'round'})
-			.style({'stroke-width': 1 })
-			.attr("d", path); /**/
-	
+	var redwindow = function(WEST,SOUTH,EAST,NORTH,hook) { 
+		var geoRect = {type: "Polygon", coordinates: [
+			[[WEST-5,SOUTH-5]]
+			  .concat(parallel(NORTH+5, WEST-5, EAST+5))
+			  .concat(parallel(SOUTH-5, WEST-5, EAST+5).reverse())
+			]};
+		var area = d3.geo.path().projection(function(geoRect){return geoRect}).area(geoRect);
+		console.log(area);
+		if(area <250){
+			hook.append("path")
+			.datum(geoRect)
+				.style({'fill': '#B10000', 'fill-opacity': 0.3, 'stroke': '#B10000', 'stroke-linejoin': 'round','stroke-width': 1 })
+				.attr("d", path);
+			}
+		}
+	redwindow (WEST,SOUTH,EAST,NORTH,svg)
 	var label = svg.append("text")
 		.attr("x", width / 2)
 		.attr("text-anchor","middle")
