@@ -39,13 +39,24 @@ wp.dash = { // http://jsfiddle.net/tgq925aL/
 	md: "stroke-dasharray: 8,4;",		// 
 	xl: "stroke-dasharray: 16,4,3,4;"	// i18l
 };
-wp.txt = {
-	sm: "text-anchor:start;font-size:10px;",
-	md: "text-anchor:start;font-size:12px;",
-	xl: "text-anchor:start;font-size:16px;font-weight:900;",
-	xxl: "text-anchor:start;font-size:20px;font-weight:900;"
+wp.label = {
+	all : "font-family:Helvetica Neue, Helvetica, Arial, sans-serif;",
+	admin:"fill:#646464;",
+	water:"fill:#0978AB;",
+	transparent:"opacity:0.3;",
+	start : "text-anchor:start;",
+	middle : "text-anchor:middle;",
+	end : "text-anchor:end;",
+	xxs: "font-size:6px;",
+	xs: "font-size:8px;",
+	sm: "font-size:10px;",
+	md: "font-size:12px;",
+	xl: "font-size:16px;font-weight:900;",
+	xxl: "font-size:20px;font-weight:900;"
 }
 wp.poi = {
+	admin:"fill:#646464;",
+	water:"fill:#0978AB;",	
 	xs: "font-size: 8px;",
 	sm: "font-size:10px;",
 	md: "font-size:12px;",
@@ -326,15 +337,245 @@ step(); */
 
 
 /* ****************************************************** */
-/* LOCATION MAP MODULE  ********************************* 
-var location = function(selector,width,item,WNES) {
+/* LOCATION MAP MODULE  ********************************* */
+
+var locationMap = function(hookId, width, target, title, WEST, NORTH, EAST, SOUTH){
+	
+/* SETTINGS ******************************************************************** */
+// SVG injection:
+var width  = 600;
+var svg = d3.select("#hook").append("svg")
+		.attr("width", width)
+		.attr('xmlns','http://www.w3.org/2000/svg')
+		.attr('xlink','http://www.w3.org/1999/xlink')
+		.attr(':xmlns:geo','http://www.example.com/boundingbox/')
+		.attr(':xmlns:inkscape','http://www.inkscape.org/namespaces/inkscape');
+/* Tags:
+	console.log(d3.ns.prefix);
+//	d3.ns.prefix.geo = "http://www.example.com/boundingbox/";
+//	d3.ns.prefix.inkscape ="http://www.inkscape.org/namespaces/inkscape";
+	console.log(d3.ns.prefix); */
+
+	//	d3.ns.qualify("geo:bb");
+	svg.append(":geo:g").attr("id","geo")
+    	.attr(':geo:syntax', "WSEN bounding box in decimal degrees")
+    	.attr(':geo:WEST',  WEST)
+    	.attr(':geo:SOUTH', SOUTH)
+    	.attr(':geo:EAST',  EAST)
+    	.attr(':geo:NORTH', NORTH)
+    	.attr(':geo:Title', title);
+	
+// Projection default
+var projection = d3.geo.mercator()
+		.scale(1)
+		.translate([0, 0]);
+var path = d3.geo.path()
+		.projection(projection); //  .pointRadius(4)
+	
+injectPattern("#hook svg"); //Pattern injection : disputed-in, disputed-out
+
+ 
+// Data (getJSON: TopoJSON)
+d3.json("../output/"+target+"/administrative.topo.json", function(error, Stone) {
+
+/* DATA ********************************************************** */
+    var admin_0   = topojson.feature(Stone, Stone.objects.admin_0),
+        admin_1   = topojson.feature(Stone, Stone.objects.admin_1),
+        disputed  = topojson.feature(Stone, Stone.objects.disputed),
+        places    = topojson.feature(Stone, Stone.objects.places),
+		coast     = topojson.mesh(Stone, Stone.objects.admin_0, function(a,b) { return a===b;}),
+        L0_border = topojson.mesh(Stone, Stone.objects.admin_0, function(a,b) { return a!==b;}),
+		L1_border = topojson.mesh(Stone, Stone.objects.admin_1, function(a,b) { 
+			return a !==b && a.properties.L0 === b.properties.L0 && a.properties.L0 === target;
+		}),
+		neighbors = topojson.neighbors(Stone.objects.admin_1.geometries); // coloring: full line
+
+/* STYLES ******************************************************** */
+	var S = {};
+  		S.focus = wp.location.focus+ wp.stroke.no,
+		S.land  = wp.location.land + wp.stroke.no,
+		S.coast = wp.location.waterline+ wp.stroke.md,
+		S.water = wp.location.waterarea,
+		S.L0_border = wp.location.border + wp.stroke.md + wp.dash.xl,
+		S.L1_border = wp.location.border + wp.stroke.md + wp.dash.no,
+		S.Places_labels = wp.label.all+wp.label.admin+wp.label.sm,
+		S.L1_labels     = wp.label.all+wp.label.admin+wp.label.sm+wp.label.middle+wp.label.transparent;
+
+	
+	// Projection recalculated
+	var t = getTransform(admin_0,-1,width, projection); // NEED BB. Island are tied otherwise.
+	projection
+		.scale(t.scale)
+		.translate(t.translate);
+	svg.attr("height", t.height);
+	
+	//oceans
+	var bg = svg.append("g")
+			.attr(":inkscape:groupmode","layer")
+			.attr({'id':'bg',':inkscape:label':'background'});
+	bg.append("g").attr("id","water")
+		.attr("style", S.water)
+		.append("rect")
+		.attr("x", 0)
+		.attr("y", 0)
+		.attr("width",    width)
+		.attr("height", t.height);
+	// Oceans rasters : INACTIVE
+	getImageBase64('../output/'+target+'/image.png', function (image) {
+		bg.append("g")
+			//.attr("transform","scale(1, 1)")
+			.attr(":inkscape:groupmode","layer")
+			.attr({'id':'topography_(raster)',':inkscape:label':'topography_(raster)'})
+		.append("image")
+			.attr("class", "topography_raster")
+		  .attr("href", "data:image/png;base64," + image)
+			.attr("width", width)
+			.attr("height", t.height)
+			.style("opacity", 0.1); // replace href link by data URI, d3js + client handle the missing xlink
+	})
+/* Polygons ****************************************************** */
+//Append L0 polygons 
+	var L0 = svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'L0',':inkscape:label':'L0'})
+	.selectAll(".countries")
+        .data(admin_0.features)
+      .enter().append("path")
+        .attr("class", "L0")
+        .attr("style", function(d){ return d.properties.L0 === target? S.focus : S.land; } )
+        .attr("name", function(d) { return d.properties.id; })
+        //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
+        .attr("d", path)
+		.on("click", click);
+ 
+//Append L1 polygons 
+    var L1 = svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'L1',':inkscape:label':'L1'})
+	.selectAll(".subunit")
+        .data(admin_1.features)
+      .enter().append("path")
+        .attr("class", function(d){ return d.properties.L0 === target? "L1": "L1 invisible"; } )
+        .attr("style", function(d){ return d.properties.L0 === target? S.focus : S.land; } )
+        .attr("name", function(d) { return d.id; })
+        .attr("d", path )
+        //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
+       // .on("mouseover", )
+		.on("click", click);
 	
 
+/* Arcs ********************************************************** */
+// Admin1-borders filtered
+   var L1_borders = svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'L1_borders',':inkscape:label':'L1_borders'})
+	.append("path")
+        .datum(L1_border)
+        .attr("class", "L1_border")
+        .attr("style", S.L1_border) // css
+        .attr("d", path);
 
-} //END fn.InjectMap*/
+// Admin0-borders filtered
+   var L0_borders = svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'L0_borders',':inkscape:label':'L0_borders'})
+	.append("path")
+        .datum(L0_border)
+        .attr("class", "L0_border")
+        .attr("style", S.L0_border) // css
+        .attr("d", path);
+
+// Coast-borders filtered
+   var coasts = svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'Coast',':inkscape:label':'Coast'})
+	.append("path")
+        .datum(coast )
+        .attr("class", "coastline")
+        .attr("style", S.coast) // css
+        .attr("d", path);
+
+ //Append disputed polygons 
+ var disputeds = function(){ 
+	if(disputed.features){
+    svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'Disputed',':inkscape:label':'Disputed'})
+	.selectAll(".disputed")
+        .data(disputed.features)
+      .enter().append("path")
+        .attr("fill", function(d){ return d.properties.L0 === target? "url(#hash2_4)": "url(#hash4_2)"} )
+		.attr("name", function(d) { return d.id; })
+        .attr("d", path )
+        //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
+        .on("click", click);
+ 	}
+ }()
+
+/* DOT & LABELS **************************************************** */
+// Places: dot placement ******************************************* */
+ if(places.features){
+    svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'Places_dots',':inkscape:label':'Places_dots'})
+		.attr("style", "fill:#646464;")
+	.selectAll("path")
+        .data(places.features)
+      .enter().append("text")
+        .attr("class", "place")
+		.attr("x", function (d) { return path.centroid(d)[0] })
+		.attr("y", function (d) { return path.centroid(d)[1] })
+		.attr("dy",".33em")
+		.text(function(d){ var s = d.properties.status;
+           return s==="Admin-0 capital"? "◉": s==="Admin-1 capital"? "●" : "⚪"; // ⬤◉⍟☉⚪⚫●⚬◯★☆☆⭐ ⭑ ⭒
+		})
+		.style(function(d){ var s = d.properties.status;
+           return s==="Admin-0 capital"? wp.poi.xl: s==="Admin-1 capital"? wp.poi.md : wp.poi.sm; // ⬤◉●◯★☆⍟☆⭐ ⭑ ⭒
+		});
+}
+		
+// Places: label placement
+    svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'Places_labels',':inkscape:label':'Places_labels'})
+		.attr("style", S.Places_labels)
+	.selectAll(".place-label")
+        .data(places.features)
+      .enter().append("text")
+        .attr("class", "place-label")
+		.attr("status", function(d){return d.properties.status})
+		.attr("style",function(d){ 
+		    var s,t;
+            d.properties.status==="Admin-0 capital"? s=wp.label.xl:
+            d.properties.status==="Admin-1 capital"? s=wp.label.md : s="";
+		    d.geometry.coordinates[0] < EAST-(EAST - WEST)/10? t= "" : t="text-anchor:end;";
+			return s = s+t;
+		})
+        .attr({"dy":".33em","x":function(d) { return d.geometry.coordinates[0] < EAST-(EAST-WEST)/10 ? 8 : -8; } }) // avoid dot overlap
+		.attr("transform",  function(d) { return "translate(" + projection(d.geometry.coordinates) + ")"; })
+        .text(function(d) { return d.geometry.coordinates[0] < EAST-(EAST-WEST)/10 ? d.id: "" } );
 
 
 
+/* L1 labels ***************************************************** */
+    svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'L1_labels',':inkscape:label':'L1_labels'})
+		.attr("style", S.L1_labels)
+	.selectAll(".subunit-label")
+        .data(admin_1.features)
+      .enter().append("text")
+        .attr("class", function(d){ return d.properties.L0 === target? "L1_label": "L1_label invisible"; } )
+        .attr("data-name", function(d) { return d.id ;})
+		.attr("x", function (d) { return path.centroid(d)[0] })
+		.attr("y", function (d) { return path.centroid(d)[1] })
+		.text(function(d) { return d.id; });
+})
+}//END fn.InjectMap*/
+
+
+/* ****************************************************** */
+/* D3 helpers ****************************** */
 var getTransform = function(d,padding_pc, width, projection) { 
 	var pd =  (100-(2*padding_pc))/100 || (100-(2*5))/100; // default to .9
 	/* GEOJSON PROFILING *********************************** */
@@ -360,15 +601,14 @@ var getTransform = function(d,padding_pc, width, projection) {
 /* DOWNLOAD BUTTONS MODULE ****************************** */
 var downloadButtons = function(selector, projection){
 	var proj = projection || 0;
-d3.select(selector).html("").append("a")
-	.attr("class", "download")
+d3.select(selector).html("").append("button")
+	.attr("type","button")
+	.attr("class", "download btn btn-warning btn-md glyphicon glyphicon-download-alt")
 	.style({
 		background: "#333",
 		color: "#FFF",
 		"font-weight": 900, 
 		border: "2px solid #B10000",
-		padding: "4px", 
-		margin:"4px",
 		"text-decoration":"none"})
 	.on("click", function () { 
 	// clip if it's a map:
@@ -379,13 +619,13 @@ d3.select(selector).html("").append("a")
 			svg.selectAll("path").attr("d", path);
 		}
 	// download:
-		console.log('2'); 
+		console.log('2');
 		var e = document.createElement('script');
 		if (window.location.protocol === 'https:') { e.setAttribute('src', 'https://rawgit.com/NYTimes/svg-crowbar/gh-pages/svg-crowbar.js'); } 
 		else { e.setAttribute('src', 'http://nytimes.github.com/svg-crowbar/svg-crowbar.js'); } 
 		e.setAttribute('class', 'svg-crowbar'); 
 		document.body.appendChild(e); })
-	.html("<big>⇩</big> Download"); /* -- Works on Chrome. Feedback welcome for others web browsers.*/
+	.text(" Download"); /* -- Works on Chrome. Feedback welcome for others web browsers.*/
 }
 
 
@@ -397,7 +637,6 @@ d3.select(selector).html("").append("a")
 /* ****************************************************** */
 /* SELECT ITEM MODULE *********************************** */
 // in _location
-
 
 
 
