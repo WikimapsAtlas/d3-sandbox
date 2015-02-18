@@ -39,6 +39,19 @@ wp.dash = { // http://jsfiddle.net/tgq925aL/
 	md: "stroke-dasharray: 8,4;",		// 
 	xl: "stroke-dasharray: 16,4,3,4;"	// i18l
 };
+wp.txt = {
+	sm: "text-anchor:start;font-size:10px;",
+	md: "text-anchor:start;font-size:12px;",
+	xl: "text-anchor:start;font-size:16px;font-weight:900;",
+	xxl: "text-anchor:start;font-size:20px;font-weight:900;"
+}
+wp.poi = {
+	xs: "font-size: 8px;",
+	sm: "font-size:10px;",
+	md: "font-size:12px;",
+	xl: "font-size:16px;",
+	xxl:"font-size:20px;"
+}
 /* Location map ***************************************** */
 // https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Maps/Conventions
 wp.location = { 
@@ -322,10 +335,12 @@ var location = function(selector,width,item,WNES) {
 
 
 
-var getTransform = function(d,padding_pc) {
+var getTransform = function(d,padding_pc, width, projection) { 
 	var pd =  (100-(2*padding_pc))/100 || (100-(2*5))/100; // default to .9
 	/* GEOJSON PROFILING *********************************** */
-	var b = path.bounds(d); // [left, bottom], [right, top] // W S E N
+	var b = d3.geo.path()
+		.projection(projection)
+		.bounds(d); // [left, bottom], [right, top] // W S E N
 		// b.w = b[0][0]; b.s = b[0][1]; b.e = b[1][0]; b.n = b[1][1];
 		b.dx = Math.abs(b[1][0] - b[0][0]);	// distance x = E-W
 		b.dy = Math.abs(b[1][1] - b[0][1]);	// distance y = N-S
