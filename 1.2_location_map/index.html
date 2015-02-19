@@ -41,16 +41,7 @@ var target=areas[0].item,
 
 // var color = d3.scale.category10(); // d3.scale.ordinal().domain(["000000", "FFFFFF", "baz"]).range(colorbrewer.RdBu[9]);
 
-// Geo values of interest :
-var target    = target,
-	latCenter = (SOUTH + NORTH)/2,
-    lonCenter = (WEST + EAST)/2,
-    geo_width = (EAST - WEST),
-    geo_height= (NORTH - SOUTH);
 
-/* END ******************************************************************** */
-
-
-/**/locationMap("#hook",300, target, title, WEST, NORTH, EAST, SOUTH);/**/
+locationMap("#hook",300, target, title, WEST, NORTH, EAST, SOUTH);/**/
 downloadButtons(".download",0)
 </script>
