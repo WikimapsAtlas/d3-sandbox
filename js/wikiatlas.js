@@ -340,21 +340,26 @@ step(); */
 /* LOCATION MAP MODULE  ********************************* */
 
 var locationMap = function(hookId, width, target, title, WEST, NORTH, EAST, SOUTH){
-	
+	 console.log("locationMap()")
 /* SETTINGS ******************************************************************** */
 // SVG injection:
 var width  = 600;
-var svg = d3.select("#hook").append("svg")
+var svg = d3.select(hookId).append("svg")
 		.attr("width", width)
+		//.attr(':xmlns:xlink','').attr('xmlns:xlink','').attr('xlink','')
 		.attr('xmlns','http://www.w3.org/2000/svg')
-		.attr('xlink','http://www.w3.org/1999/xlink')
+		.attr(':xmlns:xlink','http://www.w3.org/1999/xlink')
 		.attr(':xmlns:geo','http://www.example.com/boundingbox/')
-		.attr(':xmlns:inkscape','http://www.inkscape.org/namespaces/inkscape');
-/* Tags:
-	console.log(d3.ns.prefix);
-//	d3.ns.prefix.geo = "http://www.example.com/boundingbox/";
-//	d3.ns.prefix.inkscape ="http://www.inkscape.org/namespaces/inkscape";
-	console.log(d3.ns.prefix); */
+		.attr(':xmlns:inkscape','http://www.inkscape.org/namespaces/inkscape')
+		.attr(":xmlns:cc","http://creativecommons.org/ns#");
+
+/* var svg = d3.select(hookId).append("svg").attr("width", width)
+	 .attr(":xmlns:svg","http://www.w3.org/2000/svg")
+	.attr(":xmlns"    ,"http://www.w3.org/2000/svg") // if not:  file does not appear to have any style information
+	.attr(":xmlns:xlink","http://www.w3.org/1999/xlink") // if not: Namespace prefix xlink for href
+	 .attr(":xmlns:rdf","http://www.w3.org/1999/02/22-rdf-syntax-ns#") 
+	; */
+
 
 	//	d3.ns.qualify("geo:bb");
 	svg.append(":geo:g").attr("id","geo")
@@ -371,13 +376,16 @@ var projection = d3.geo.mercator()
 		.translate([0, 0]);
 var path = d3.geo.path()
 		.projection(projection); //  .pointRadius(4)
+
+injectPattern("svg"); //Pattern injection : disputed-in, disputed-out
+
+console.log("pattern()");
+var url = "http://rugger-demast.codio.io/output/"+target+"/administrative.topo.json";
+console.log(url);
 	
-injectPattern("#hook svg"); //Pattern injection : disputed-in, disputed-out
-
- 
-// Data (getJSON: TopoJSON)
-d3.json("../output/"+target+"/administrative.topo.json", function(error, Stone) {
-
+	// Data (getJSON: TopoJSON)
+d3.json(url, function(error, Stone) {
+console.log("d3.json()");
 /* DATA ********************************************************** */
     var admin_0   = topojson.feature(Stone, Stone.objects.admin_0),
         admin_1   = topojson.feature(Stone, Stone.objects.admin_1),
@@ -387,8 +395,8 @@ d3.json("../output/"+target+"/administrative.topo.json", function(error, Stone) 
         L0_border = topojson.mesh(Stone, Stone.objects.admin_0, function(a,b) { return a!==b;}),
 		L1_border = topojson.mesh(Stone, Stone.objects.admin_1, function(a,b) { 
 			return a !==b && a.properties.L0 === b.properties.L0 && a.properties.L0 === target;
-		}),
-		neighbors = topojson.neighbors(Stone.objects.admin_1.geometries); // coloring: full line
+		});
+		// neighbors = topojson.neighbors(Stone.objects.admin_1.geometries); // coloring: full line
 
 /* STYLES ******************************************************** */
 	var S = {};
@@ -421,7 +429,8 @@ d3.json("../output/"+target+"/administrative.topo.json", function(error, Stone) 
 		.attr("width",    width)
 		.attr("height", t.height);
 	// Oceans rasters : INACTIVE
-	getImageBase64('../output/'+target+'/image.png', function (image) {
+/** /
+	getImageBase64('../output/'+target+'/color.jpg', function (image) {
 		bg.append("g")
 			//.attr("transform","scale(1, 1)")
 			.attr(":inkscape:groupmode","layer")
@@ -432,7 +441,7 @@ d3.json("../output/"+target+"/administrative.topo.json", function(error, Stone) 
 			.attr("width", width)
 			.attr("height", t.height)
 			.style("opacity", 0.1); // replace href link by data URI, d3js + client handle the missing xlink
-	})
+	}) /**/
 /* Polygons ****************************************************** */
 //Append L0 polygons 
 	var L0 = svg.append("g")
@@ -570,6 +579,9 @@ d3.json("../output/"+target+"/administrative.topo.json", function(error, Stone) 
 		.attr("x", function (d) { return path.centroid(d)[0] })
 		.attr("y", function (d) { return path.centroid(d)[1] })
 		.text(function(d) { return d.id; });
+
+	console.log("layers end")
+	
 })
 }//END fn.InjectMap*/
 
