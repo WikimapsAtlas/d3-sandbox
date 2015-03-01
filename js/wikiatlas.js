@@ -340,35 +340,36 @@ step(); */
 /* LOCATION MAP MODULE  ********************************* */
 
 var locationMap = function(hookId, width, target, title, WEST, NORTH, EAST, SOUTH){
-	 console.log("locationMap()")
+	console.log("locationMp()");
 /* SETTINGS ******************************************************************** */
 // SVG injection:
-var width  = 600;
+var width  = 600 || width,
+	title_ = title.replace(/ /g, "_").replace(/(_)+/g, "_"),
+	titleId = title.replace(/[^a-zA-Z0-9]/gi, "_").replace(/(_)+/g, "_");
 var svg = d3.select(hookId).append("svg")
+		.attr("name", title_+"_administrative_map_\(2015\)")
+		.attr("id", titleId+"_administrative_map_\(2015\)")
 		.attr("width", width)
 		//.attr(':xmlns:xlink','').attr('xmlns:xlink','').attr('xlink','')
-		.attr('xmlns','http://www.w3.org/2000/svg')
-		.attr(':xmlns:xlink','http://www.w3.org/1999/xlink')
 		.attr(':xmlns:geo','http://www.example.com/boundingbox/')
 		.attr(':xmlns:inkscape','http://www.inkscape.org/namespaces/inkscape')
 		.attr(":xmlns:cc","http://creativecommons.org/ns#");
-
-/* var svg = d3.select(hookId).append("svg").attr("width", width)
-	 .attr(":xmlns:svg","http://www.w3.org/2000/svg")
-	.attr(":xmlns"    ,"http://www.w3.org/2000/svg") // if not:  file does not appear to have any style information
-	.attr(":xmlns:xlink","http://www.w3.org/1999/xlink") // if not: Namespace prefix xlink for href
-	 .attr(":xmlns:rdf","http://www.w3.org/1999/02/22-rdf-syntax-ns#") 
+	/*  var svg = d3.select(hookId).append("svg").attr("width", width)
+	svg.attr(':xmlns','http://www.w3.org/2000/svg')		// if not: file does not appear to have any style information
+			.attr(':xmlns:xlink','http://www.w3.org/1999/xlink')// if not: Namespace prefix xlink for href
+			// no = client: no img; crowbar: raster yes; node: raster yes ?
+			.attr(":xmlns:rdf","http://www.w3.org/1999/02/22-rdf-syntax-ns#") 
 	; */
 
 
 	//	d3.ns.qualify("geo:bb");
-	svg.append(":geo:g").attr("id","geo")
-    	.attr(':geo:syntax', "WSEN bounding box in decimal degrees")
-    	.attr(':geo:WEST',  WEST)
-    	.attr(':geo:SOUTH', SOUTH)
-    	.attr(':geo:EAST',  EAST)
-    	.attr(':geo:NORTH', NORTH)
-    	.attr(':geo:Title', title);
+	svg.append(":geo:g").attr(":geo:id","geo")
+		.attr(':geo:syntax', "WSEN bounding box in decimal degrees")
+		.attr(':geo:WEST',  WEST)
+		.attr(':geo:SOUTH', SOUTH)
+		.attr(':geo:EAST',  EAST)
+		.attr(':geo:NORTH', NORTH)
+		.attr(':geo:Title', title);
 	
 // Projection default
 var projection = d3.geo.mercator()
@@ -380,20 +381,46 @@ var path = d3.geo.path()
 injectPattern("svg"); //Pattern injection : disputed-in, disputed-out
 
 console.log("pattern()");
-var url = "http://rugger-demast.codio.io/output/"+target+"/administrative.topo.json";
-console.log(url);
+var url1 = "https://rugger-demast.codio.io/output/"+target+"/administrative.topo.json",
+	url2 = "https://rugger-demast.codio.io/output/"+target+"/color.jpg.b64";
+console.log(url2);
+
+ queue()
+	.defer(d3.json, url1)
+	.defer(d3.text, url2)
+	.await(makeMap); /**/
+/** /	
+var Stone = (function () {
+    var json = null;
+    $.ajax({
+        'async': false,
+        'global': false,
+        'url': url,
+        'dataType': "json",
+        'success': function (data) {
+            json = data;
+        }
+    });
+    return json;
+})(); /**/
 	
+/* *************************************************************** */
+/* *************************************************************** */
+/* *************************************************************** */
+
 	// Data (getJSON: TopoJSON)
-d3.json(url, function(error, Stone) {
-console.log("d3.json()");
+function makeMap(error, json, img1){
+		console.log("MakeMap: start");
+		//console.log("d3.json()");
 /* DATA ********************************************************** */
-    var admin_0   = topojson.feature(Stone, Stone.objects.admin_0),
-        admin_1   = topojson.feature(Stone, Stone.objects.admin_1),
-        disputed  = topojson.feature(Stone, Stone.objects.disputed),
-        places    = topojson.feature(Stone, Stone.objects.places),
-		coast     = topojson.mesh(Stone, Stone.objects.admin_0, function(a,b) { return a===b;}),
-        L0_border = topojson.mesh(Stone, Stone.objects.admin_0, function(a,b) { return a!==b;}),
-		L1_border = topojson.mesh(Stone, Stone.objects.admin_1, function(a,b) { 
+    var admin_0   = topojson.feature(json, json.objects.admin_0),
+        admin_1   = topojson.feature(json, json.objects.admin_1),
+		L1_focus  = admin_1.features.filter(function(d) { return d.properties.L0 === target; }),
+        disputed  = topojson.feature(json, json.objects.disputed),
+        places    = topojson.feature(json, json.objects.places),
+		coast     = topojson.mesh(json, json.objects.admin_0, function(a,b) { return a===b;}),
+        L0_border = topojson.mesh(json, json.objects.admin_0, function(a,b) { return a!==b;}),
+		L1_border = topojson.mesh(json, json.objects.admin_1, function(a,b) { 
 			return a !==b && a.properties.L0 === b.properties.L0 && a.properties.L0 === target;
 		});
 		// neighbors = topojson.neighbors(Stone.objects.admin_1.geometries); // coloring: full line
@@ -411,7 +438,7 @@ console.log("d3.json()");
 
 	
 	// Projection recalculated
-	var t = getTransform(admin_0,-1,width, projection); // NEED BB. Island are tied otherwise.
+	var t = getTransform(admin_0,0,width, projection); // NEED BB. Island are tied otherwise.
 	projection
 		.scale(t.scale)
 		.translate(t.translate);
@@ -421,6 +448,7 @@ console.log("d3.json()");
 	var bg = svg.append("g")
 			.attr(":inkscape:groupmode","layer")
 			.attr({'id':'bg',':inkscape:label':'background'});
+	
 	bg.append("g").attr("id","water")
 		.attr("style", S.water)
 		.append("rect")
@@ -428,20 +456,18 @@ console.log("d3.json()");
 		.attr("y", 0)
 		.attr("width",    width)
 		.attr("height", t.height);
-	// Oceans rasters : INACTIVE
-/** /
-	getImageBase64('../output/'+target+'/color.jpg', function (image) {
+
+
 		bg.append("g")
 			//.attr("transform","scale(1, 1)")
 			.attr(":inkscape:groupmode","layer")
 			.attr({'id':'topography_(raster)',':inkscape:label':'topography_(raster)'})
 		.append("image")
 			.attr("class", "topography_raster")
-		  .attr("href", "data:image/png;base64," + image)
 			.attr("width", width)
 			.attr("height", t.height)
-			.style("opacity", 0.1); // replace href link by data URI, d3js + client handle the missing xlink
-	}) /**/
+		.attr("xlink:xlink:href", "data:image/png;base64," + img1); // replace link by data URI // replace href link by data URI, d3js + client handle the missing xlink
+
 /* Polygons ****************************************************** */
 //Append L0 polygons 
 	var L0 = svg.append("g")
@@ -451,8 +477,8 @@ console.log("d3.json()");
         .data(admin_0.features)
       .enter().append("path")
         .attr("class", "L0")
+        .attr("name", function(d) { return d.properties.name; })
         .attr("style", function(d){ return d.properties.L0 === target? S.focus : S.land; } )
-        .attr("name", function(d) { return d.properties.id; })
         //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
         .attr("d", path)
 		.on("click", click);
@@ -462,11 +488,11 @@ console.log("d3.json()");
  		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'L1',':inkscape:label':'L1'})
 	.selectAll(".subunit")
-        .data(admin_1.features)
+        .data(L1_focus)
       .enter().append("path")
         .attr("class", function(d){ return d.properties.L0 === target? "L1": "L1 invisible"; } )
-        .attr("style", function(d){ return d.properties.L0 === target? S.focus : S.land; } )
         .attr("name", function(d) { return d.id; })
+        .attr("style", function(d){ return d.properties.L0 === target? S.focus : S.land; } )
         .attr("d", path )
         //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
        // .on("mouseover", )
@@ -513,8 +539,8 @@ console.log("d3.json()");
 	.selectAll(".disputed")
         .data(disputed.features)
       .enter().append("path")
-        .attr("fill", function(d){ return d.properties.L0 === target? "url(#hash2_4)": "url(#hash4_2)"} )
 		.attr("name", function(d) { return d.id; })
+        .attr("fill", function(d){ return d.properties.L0 === target? "url(#hash2_4)": "url(#hash4_2)"} )
         .attr("d", path )
         //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
         .on("click", click);
@@ -532,8 +558,9 @@ console.log("d3.json()");
         .data(places.features)
       .enter().append("text")
         .attr("class", "place")
-		.attr("x", function (d) { return path.centroid(d)[0] })
-		.attr("y", function (d) { return path.centroid(d)[1] })
+		.attr("name", function(d) { return d.id; })
+		.attr("x",    function(d) { return path.centroid(d)[0] })
+		.attr("y",    function(d) { return path.centroid(d)[1] })
 		.attr("dy",".33em")
 		.text(function(d){ var s = d.properties.status;
            return s==="Admin-0 capital"? "◉": s==="Admin-1 capital"? "●" : "⚪"; // ⬤◉⍟☉⚪⚫●⚬◯★☆☆⭐ ⭑ ⭒
@@ -552,8 +579,9 @@ console.log("d3.json()");
         .data(places.features)
       .enter().append("text")
         .attr("class", "place-label")
+		.attr("name",   function(d) { return d.id; })
 		.attr("status", function(d){return d.properties.status})
-		.attr("style",function(d){ 
+		.attr("style",  function(d){ 
 		    var s,t;
             d.properties.status==="Admin-0 capital"? s=wp.label.xl:
             d.properties.status==="Admin-1 capital"? s=wp.label.md : s="";
@@ -564,7 +592,19 @@ console.log("d3.json()");
 		.attr("transform",  function(d) { return "translate(" + projection(d.geometry.coordinates) + ")"; })
         .text(function(d) { return d.geometry.coordinates[0] < EAST-(EAST-WEST)/10 ? d.id: "" } );
 
-
+/* L0 labels ***************************************************** */
+    svg.append("g")
+ 		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'L0_labels',':inkscape:label':'L0_labels'})
+		.attr("style", S.L1_labels + wp.label.md)
+	.selectAll(".countries-label")
+        .data(admin_0.features)
+      .enter().append("text")
+        .attr("style", function(d){ return d.properties.L0 === target? "visibility:none;":""; })
+        .attr("name", function(d) { return d.id ;})
+		.attr("x", function (d) { return path.centroid(d)[0] })
+		.attr("y", function (d) { return path.centroid(d)[1] })
+		.text(function(d) { return d.id; });
 
 /* L1 labels ***************************************************** */
     svg.append("g")
@@ -572,18 +612,18 @@ console.log("d3.json()");
 		.attr({'id':'L1_labels',':inkscape:label':'L1_labels'})
 		.attr("style", S.L1_labels)
 	.selectAll(".subunit-label")
-        .data(admin_1.features)
+        .data(L1_focus)
       .enter().append("text")
         .attr("class", function(d){ return d.properties.L0 === target? "L1_label": "L1_label invisible"; } )
-        .attr("data-name", function(d) { return d.id ;})
+        .attr("name", function(d) { return d.id ;})
 		.attr("x", function (d) { return path.centroid(d)[0] })
 		.attr("y", function (d) { return path.centroid(d)[1] })
 		.text(function(d) { return d.id; });
 
 	console.log("layers end")
-	
-})
+  }
 }//END fn.InjectMap*/
+
 
 
 /* ****************************************************** */
@@ -633,8 +673,9 @@ d3.select(selector).html("").append("button")
 	// download:
 		console.log('2');
 		var e = document.createElement('script');
-		if (window.location.protocol === 'https:') { e.setAttribute('src', 'https://rawgit.com/NYTimes/svg-crowbar/gh-pages/svg-crowbar.js'); } 
-		else { e.setAttribute('src', 'http://nytimes.github.com/svg-crowbar/svg-crowbar.js'); } 
+		if (window.location.protocol === 'https:') { 
+			e.setAttribute('src', '../js/svg-crowbar.js'); } 
+		else { e.setAttribute('src', '../js/svg-crowbar.js'); }	
 		e.setAttribute('class', 'svg-crowbar'); 
 		document.body.appendChild(e); })
 	.text(" Download"); /* -- Works on Chrome. Feedback welcome for others web browsers.*/

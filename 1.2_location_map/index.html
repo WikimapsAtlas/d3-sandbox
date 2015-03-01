@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <style>
-svg { border: 5px solid #646464; background-color: #C6ECFF;}
-/**/ path.invisible,text.invisible { fill:none;stroke:none; visibility:none;} /**/
+svg { border: 1px solid #646464;}
+/* path.invisible,text.invisible { fill:none;stroke:none; visibility:none;} /**/
 path.L1:hover { fill: #B10000 ;}
 </style>
 <body>
@@ -16,7 +16,7 @@ path.L1:hover { fill: #B10000 ;}
 <script src="../js/jquery-2.0.1.min.js"></script>
 <script src="../js/d3.v3.min.js"></script>
 <script src="../js/topojson.v1.min.js"></script>
-<script src="../js/queue.min.js"></script>
+<script src="../js/queue.v1.min.js"></script>
 <script src="../js/b64.js"></script>
 <script src="../js/wikiatlas.js"></script>
 
@@ -35,15 +35,13 @@ var areas = [
 	{"item":"Iceland", "W":-24.89, "N":66.67, "E":-13.09, "S":63.33}
 ];
 var target=areas[0].item,
-	title="admin map",
+	title="Country's name",
 	WEST=areas[0].W,
 	NORTH=areas[0].N,
 	EAST=areas[0].E,
 	SOUTH=areas[0].S;
 
 // var color = d3.scale.category10(); // d3.scale.ordinal().domain(["000000", "FFFFFF", "baz"]).range(colorbrewer.RdBu[9]);
-
-
 locationMap("#hook",300, target, title, WEST, NORTH, EAST, SOUTH);/**/
 downloadButtons(".download",0)
 </script>
