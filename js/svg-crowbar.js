@@ -1,5 +1,5 @@
 (function() {
-  var doctype = '<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">';
+  var doctype = '<?xml version="1.0" encoding="UTF-8" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">';
 
   window.URL = (window.URL || window.webkitURL);
 
@@ -147,13 +147,13 @@
       svg.setAttribute("version", "1.1");
 
       var defsEl = document.createElement("defs");
-      svg.insertBefore(defsEl, svg.firstChild); //TODO   .insert("defs", ":first-child")
+//Yug: Killing off buggy stylesheet! <defs xmlns="http://www.w3.org/1999/xhtml"><style>...</style></defs>
+//      svg.insertBefore(defsEl, svg.firstChild); //TODO   .insert("defs", ":first-child")
       // defsEl.setAttribute("class", "svg-crowbar");
-
+		
       var styleEl = document.createElement("style");
       defsEl.appendChild(styleEl);
       styleEl.setAttribute("type", "text/css");
-
       /** /// removing attributes so they aren't doubled up
       svg.removeAttribute("xmlns");
       svg.removeAttribute("xmlns:xlink");
@@ -181,6 +181,8 @@
         childElementCount: svg.childElementCount,
         source: [doctype + source]
       });
+		
+      defsEl.removeAttribute("xmlns");
     });
     return svgInfo;
   }
