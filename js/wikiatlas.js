@@ -385,14 +385,15 @@ injectPattern("svg"); //Pattern injection : disputed-in, disputed-out
 
 console.log("pattern()");
 var url1 = "https://rugger-demast.codio.io/output/"+target+"/administrative.topo.json",
-	url2 = "https://rugger-demast.codio.io/output/"+target+"/color.jpg.b64",
-	url3 = "https://rugger-demast.codio.io/output/"+target+"/trans.png.b64";
-console.log(url2);
+	url2 = "https://rugger-demast.codio.io/output/"+target+"/color.jpg",
+	url3 = "https://rugger-demast.codio.io/output/"+target+"/trans.png.b64",
+	url4 = "https://rugger-demast.codio.io/output/"+target+"/color.jpg.b64";
 
  queue()
 	.defer(d3.json, url1)
-	.defer(d3.text, url2)
+	.defer(d3.uri,  url2)
 	.defer(d3.text, url3)
+	.defer(d3.text, url4)
 	.await(makeMap); /**/
 /** /	
 var Stone = (function () {
@@ -414,7 +415,7 @@ var Stone = (function () {
 /* *************************************************************** */
 
 	// Data (getJSON: TopoJSON)
-function makeMap(error, json, img1, img2){
+function makeMap(error, json, file2, file3){
 		console.log("MakeMap: start");
 		//console.log("d3.json()");
 /* DATA ********************************************************** */
@@ -470,7 +471,7 @@ function makeMap(error, json, img1, img2){
 	  .append("image")
 		.attr("width", width)
 		.attr("height", t.height)
-		.attr("xlink:xlink:href", "data:image/png;base64," + img1); // replace link by data URI // replace href link by data URI, d3js + client handle the missing xlink
+		.attr("xlink:xlink:href", "data:image/jpg;base64," + file2); // replace link by data URI // replace href link by data URI, d3js + client handle the missing xlink
 
 /* Polygons ****************************************************** */
 //Append L0 polygons 
@@ -508,7 +509,7 @@ function makeMap(error, json, img1, img2){
 	  .append("image")
 		.attr("width", width)
 		.attr("height", t.height)
-		.attr("xlink:xlink:href", "data:image/png;base64," + img2); // replace link by data URI // replace href link by data URI, d3js + client handle the missing xlink
+		.attr("xlink:xlink:href", "data:image/png;base64," + file3); // replace link by data URI // replace href link by data URI, d3js + client handle the missing xlink
 
 
 /* Arcs ********************************************************** */
