@@ -395,8 +395,8 @@ var url1  = root+"/administrative.topo.json", // https://rugger-demast.codio.io/
 
  queue()
 	.defer(d3.json, url1)
-	.defer(d3.text,  url2)
-	.defer(d3.text,  url3)
+	.defer(d3.text, url2)
+	.defer(d3.text, url3)
 	.await(makeMap); /**/
 /** /	
 var Stone = (function () {
