@@ -9,7 +9,7 @@
 
 // Function Click > Console (for fun)
 function click(a){ var name = a.properties.name || a.id ; console.log(name);}
-function dblclick(a){window.location.assign("http://en.wikipedia.org/wiki/"+a.properties.name, '_blank');}
+function dblclick(a){ window.location.assign("http://en.wikipedia.org/wiki/"+a.properties.name, '_blank');}
 
 /* MATH TOOLKIT ***************************************** */
 function parallel(φ, λ0, λ1) {
@@ -21,6 +21,40 @@ function parallel(φ, λ0, λ1) {
 function normalise(x) {
   return (x + 180) % 360 - 180;
 }
+/* *************************************************************** */
+/* FRAME TOOLKIT ************************************************* */
+// Get Bounding Box
+var getBBoxPxViaElementAttr = function (selector){
+	// var bb = getBBox(selector);
+	var bb = d3.selectAll(selector).attr("bounds").split(",");
+	bb = [[bb[0],bb[1]],[bb[2],bb[3]]];
+	return bb;
+};
+// Augment Bounding Box
+var bbPxToAugmentBBoxPx = function (bb,marginPx) {
+	// [[left, top], [right, bottom]] for svg px bb
+	var bbOut = [[bb[0][0]-marginPx,bb[0][1]-marginPx],[bb[1][0]+marginPx,bb[1][1]+marginPx]];
+    return bbOut;
+};
+// Draw Bounding Box
+var bbPxToXmlBBoxPath = function (bb) {
+	var l = bb[0][0], t = bb[0][1], 
+	r = bb[1][0], b = bb[1][1];  
+	var path = "M "+l+','+b+' '+r+','+b+' '+r+','+t+' '+l+','+t+' Z'; // http://jsfiddle.net/jwrmwxzt/6/
+	return path;
+};
+var bbPxToXmlBBoxCircleData = function (bb) {
+	var l = bb[0][0], t = bb[0][1], r = bb[1][0], b = bb[1][1],
+	cx = (r+l)/2, cy=(t+b)/2, cr = (r-l)<(b-t)? (b-t)/2: (r-l)/2;
+	var circleData = [ cx, cy, cr ]; // http://jsfiddle.net/jwrmwxzt/6/
+	return circleData;
+};
+var bbPxToAugmentedXmlBBox = function(bb,marginPx,condition) {
+	if (condition) { 
+		bb = bbPxToAugmentBBoxPx(bb,marginPx);
+		return bbPxToXmlBBoxPath(bb);
+	}
+};
 
 /* ****************************************************** */
 /* WIKIPEDIA CSS MODULE ********************************* */
@@ -29,10 +63,12 @@ var wp={};
 wp.stroke = {
 	0: "stroke:none;stroke-linejoin:round;",
 	no:"stroke:none;stroke-linejoin:round;",
+	xs:"stroke-width:0.5px;stroke-linejoin:round;",
 	sm:"stroke-width:1.0px;stroke-linejoin:round;",
 	md:"stroke-width:1.5px;stroke-linejoin:round;",
 	lg:"stroke-width:2.0px;stroke-linejoin:round;",
-	xl:"stroke-width:3.0px;stroke-linejoin:round;"}
+	xl:"stroke-width:3.0px;stroke-linejoin:round;"
+};
 wp.dash = { // http://jsfiddle.net/tgq925aL/
 	no: "stroke-dasharray:none;",		//
 	sm: "stroke-dasharray: 4,4;",		// normal
@@ -53,7 +89,7 @@ wp.label = {
 	md: "font-size:12px;",
 	xl: "font-size:16px;font-weight:900;",
 	xxl: "font-size:20px;font-weight:900;"
-}
+};
 wp.poi = {
 	admin:"fill:#646464;",
 	water:"fill:#0978AB;",	
@@ -62,56 +98,40 @@ wp.poi = {
 	md: "font-size:12px;",
 	xl: "font-size:16px;",
 	xxl:"font-size:20px;"
-}
+};
 /* Location map ***************************************** */
 // https://en.wikipedia.org/wiki/Wikipedia:WikiProject_Maps/Conventions
 wp.location = { 
 	no:        "fill:none;",
 	locator:   "fill:#B10000;",
+	frame :    "fill-opacity:0.3; stroke:#B10000;",
 	focus :    "fill:#FEFEE9;",
 	land  :    "fill:#E0E0E0;",
 	border:    "fill: none; stroke:#646464;",	// line_sm
 	waterline: "fill: none; stroke:#0978AB;",	// line_sm
 	waterarea: "fill:#C6ECFF;",
-	temp: "fill-opacity:0.6;stroke-dasharray:4,4;dasharray:4, 4;",
+	temp: "fill-opacity:0.6;stroke-dasharray:4,4;dasharray:4, 4;"
 };
 /* Hash patterns **************************************** */
 //Pattern injection : disputed-in, disputed-out
 var injectPattern = function(selector){
 	// location maps. Note: "hash2_4" means "hash pattern overlay, 2px colored (on), 4px not colored (off)".
-	var pattern = d3.select(selector).append("defs")
+	var pattern_disputed_in = d3.select(selector).append("defs")
 		.append("pattern")
 			.attr({ id:"hash2_4", width:"6", height:"6", patternUnits:"userSpaceOnUse", patternTransform:"rotate(-45)"})
 		.append("rect")
 			.attr({ width:"2", height:"6", transform:"translate(0,0)", fill:"#E0E0E0" }); // (!) fill: wp.location.land
-	 var pattern = d3.select(selector).append("defs")
+	var pattern_disputed_out = d3.select(selector).append("defs")
 		.append("pattern")
 			.attr({ id:"hash4_2", width:"6", height:"6", patternUnits:"userSpaceOnUse", patternTransform:"rotate(-45)"})
 		.append("rect")
 			.attr({ width:"2", height:"6", transform:"translate(0,0)", fill:"#FEFEE9" }); // (!) fill: wp.location.focus
 // To style shapes:
-//    .attr("fill", function(d){ return d.properties.L0 === target? "url(#hash2_4)": "url(#hash4_2)"} )
-}
-
-/* Topographic map ************************************** */
-// http://roadtolarissa.com/blog/2015/01/04/coloring-maps-with-d3/
-// D: Domain, D: Data. 0m,500m,3000m,5000m are of the domain.
-// http://gka.github.io/palettes/#diverging|c0=#002040,#71ABD8,#D8F2FE|c1=#94BF8B,#A8C68F,#BDCC96,#D1D7AB,#E1E4B5,#EFEBC0,#E8E1B6,#DED6A3,#D3CA9D,#CAB982,#C3A76B,#B9985A,#AA8753,#AC9A7C,#BAAE9A,#CAC3B8,#E0DED8,#F5F4F2,#FFFFFF|steps=30|bez0=1|bez1=0|coL0=0|coL1=0
-wp.topographic = {
-	water: function(){ return d3.scale.threshold().range(['#002040','#71ABD8','#D8F2FE']);},
-	plain: function(){ return d3.scale.threshold().range([])},
-	hill:  function(){ return d3.scale.threshold().range([])},
-	mount: function(){ return d3.scale.threshold().range([])},
-}
-/*
-if(min<0){ water; }
-if((min<  500) && (max >   0 && max< 9000)) { return plain }
-if((min< 2000) && (max > 500 && max< 9000)) { return hill  }
-if((min< 9000) && (max >2000 && max< 9000)) { return mount }
-*/
+//    .attr("fill", function(d){ return d.properties.L0 === iso_a2? "url(#hash2_4)": "url(#hash4_2)"} ;)
+};
 
 /* ****************************************************** */
-/* LOCATOR MAP MODULE *********************************** */
+/* GRID MODULE ****************************************** */
 var graticule = function($D3selector,step) {
 	d3.geo.graticule().step([step, step]);
 	$D3selector.append("path")
@@ -120,15 +140,13 @@ var graticule = function($D3selector,step) {
         .attr("d", path)
 		.style({'fill': 'none', 'stroke': '#0978AB', 'stroke-linejoin': 'round'})
 		.style({'stroke-width': 0.5 });
-}
-
+};
 
 /* ****************************************************** */
 /* LOCATOR MAP MODULE *********************************** */
-var localisator = function (hookId,width, title, WEST, NORTH, EAST, SOUTH) {
+var localisator = function (hookId, width, title, id, WEST, NORTH, EAST, SOUTH) {
 /* Init ************************************************* */
-	var width  = width,
-    	height = width;
+	var height = width;
 	var lon_central = function(){ 
 		var num;
 		if(EAST<WEST){ num= -(WEST+EAST)/2+180; }
@@ -137,8 +155,8 @@ var localisator = function (hookId,width, title, WEST, NORTH, EAST, SOUTH) {
 	};
 
 	var proj = d3.geo.orthographic()
-    	.scale(1/2*width)
-    	.rotate([ lon_central(), -(NORTH+SOUTH)/2 +10 ])
+		.scale(1/2*width)
+		.rotate([ lon_central(), -(NORTH+SOUTH)/2 +10 ])
 		.translate([width / 2 , height / 2 ])
 		.clipAngle(90);
 
@@ -151,14 +169,14 @@ var localisator = function (hookId,width, title, WEST, NORTH, EAST, SOUTH) {
 		.attr("width", width)
 		.attr("height", height)
 		.call(d3.behavior.drag()
-		  .origin(function() { 
+		.origin(function() { 
 			var rotate = proj.rotate(); 
 			return {x: 2 * rotate[0], y: -2 * rotate[1]}; 
 		})
-		  .on("drag", function() {
+		.on("drag", function() {
 			proj.rotate([d3.event.x / 2, -d3.event.y / 2, proj.rotate()[2]]);
 			svg.selectAll("path").attr("d", path);
-		  }))
+			}))
 		.on("dblclick", function() {
 			proj.rotate([ lon_central(), -(NORTH+SOUTH)/2 +10 ]);
 			svg.selectAll("path").attr("d", path);
@@ -166,7 +184,7 @@ var localisator = function (hookId,width, title, WEST, NORTH, EAST, SOUTH) {
 
 /* SVG background *************************************** */
 // Blue circle
-	svg.append("circle")
+	var earthDisk = svg.append("circle")
 		.attr("class", "water")
 		.attr("cx", width/2)
 		.attr("cy", height/2)
@@ -184,16 +202,16 @@ var localisator = function (hookId,width, title, WEST, NORTH, EAST, SOUTH) {
 		.attr("x2", "100%")
 		.attr("y2", "100%")
 		.attr("spreadMethod", "pad");
-	gradient.append("svg:stop") 		// middle step setting
+	gradient.append("svg:stop")			// middle step setting
 		.attr("offset", "50%")
 		.attr("stop-color", "#FFF")
 		.attr("stop-opacity", 0.3);
-	gradient.append("svg:stop") 		// final step setting
+	gradient.append("svg:stop")			// final step setting
 		.attr("offset", "100%")
 		.attr("stop-color", "#009")
 		.attr("stop-opacity", 0.3);
 	// Gradiant-circle
-	var circle = svg.append('circle') 	// append gradient to circle
+	var earthOcean = svg.append('circle')	// append gradient to circle
 		.attr('cx', width / 2)
 		.attr('cy', height / 2)
 		.attr('r', width/2 )
@@ -201,7 +219,7 @@ var localisator = function (hookId,width, title, WEST, NORTH, EAST, SOUTH) {
 	
 
 /* GIS data injection *********************************** */
-d3.json("./output/world-1e3/administrative.topo.json", function(error, Stone) {
+d3.json("./output/world-sp.07/administrative.topo.json", function(error, Stone) {
 // data organized
     var countries = topojson.feature(Stone, Stone.objects.admin_0),
         subunits  = topojson.feature(Stone, Stone.objects.admin_1),
@@ -214,8 +232,8 @@ d3.json("./output/world-1e3/administrative.topo.json", function(error, Stone) {
 	var country = svg.selectAll(".country")
 		.data(countries.features)
 	.enter().append("path") 
-		.attr("id", function(d){ return d.id.replace(/ |\.|'/g, "_") } )
-		.attr("name", function(d){ return d.id } )
+		.attr("id", function(d){ return d.properties.name.replace(/ |\.|'/g, "_");} )
+		.attr("name", function(d){ return d.properties.name; } )
 		.attr("class", "country")
 		.attr("style","fill:#FDFBEA")
 		.attr("d", path);
@@ -247,12 +265,14 @@ d3.json("./output/world-1e3/administrative.topo.json", function(error, Stone) {
 	
 	//* Red polygon drawing
 	var redwindow = function(WEST,SOUTH,EAST,NORTH,hook) { 
-		var geoRect = {type: "Polygon", coordinates: [
-			[[WEST-5,SOUTH-5]]
-			  .concat(parallel(NORTH+5, WEST-5, EAST+5))
-			  .concat(parallel(SOUTH-5, WEST-5, EAST+5).reverse())
-			]};
-		var area = d3.geo.path().projection(function(geoRect){return geoRect}).area(geoRect);
+		var d = 5;
+		// var d= (Math.abs(NORTH-SOUTH) + Math.abs(EAST-WEST)) / 20;
+		var geoRect = { type: "Polygon", coordinates: [
+			[[WEST-d,SOUTH-d]]
+				.concat(parallel(NORTH+d, WEST-d, EAST+d))
+				.concat(parallel(SOUTH-d, WEST-d, EAST+d).reverse())
+			]};	
+		var area = d3.geo.path().projection(geoRect).area(geoRect);
 		console.log(area);
 		if(area <250){
 			hook.append("path")
@@ -260,100 +280,38 @@ d3.json("./output/world-1e3/administrative.topo.json", function(error, Stone) {
 				.style({'fill': '#B10000', 'fill-opacity': 0.3, 'stroke': '#B10000', 'stroke-linejoin': 'round','stroke-width': 1 })
 				.attr("d", path);
 			}
-		}
-	redwindow (WEST,SOUTH,EAST,NORTH,svg)
+		};
+		
+	redwindow (WEST,SOUTH,EAST,NORTH,svg);
+	
 	var label = svg.append("text")
 		.attr("x", width / 2)
 		.attr("text-anchor","middle")
 		.text(title)
 		.attr("y", height * 57/100 );
 
-
-/* LOOP WORLD ****************************************************** */
-/*
-var step =  function() {
-	// var i=52;
-	if (++i >= n) { i = 0} ;
-	svg.transition();
-	var centroid = d3.geo.path()
-		.projection(function(d) { return d; })
-		.centroid;
-	var area = d3.geo.path()
-		.projection(function(d) { return d; })
-		.area;
-	var bounds = d3.geo.path()
-		.projection(function(d) { return d; })
-		.bounds;
- 
-	d3.transition()
-		.delay(0)
-		.duration(3000)
-		.tween("rotate", function() {	
-			label.text(countries[i].id);
-			country.style("fill", function(d, j) { return j === i ? "#B10000" : "#FDFBEA";  });
-			var point = centroid(countries[i]);
-			var surface  = area(countries[i]);
-			var bb = bounds(countries[i]);
-			console.log(countries[i].id);
-			console.log("area: "+surface+"; bb: "+ JSON.stringify(bb)+"/"+i );
-			return function(t) {
-				projection2.rotate([-point[0], -point[1]+10]); // area of interest slide 10⁰ up
-				svg.selectAll("path").attr("d", path);
-				
-				var red_rect = function(){
-					if(countries[i].id === "Fiji"){  bb[0][0]=177;bb[1][0]=-179; }
-					if(countries[i].id === "Russia"){ bb[0][0]=19.5;bb[1][0]=-169;}
-					if(countries[i].id === "New Zealand"){ bb[0][0]=165.5;bb[1][0]=-176; }
-					if( true ){ return t=
-						{type: "Polygon", coordinates: [ 
-						[[bb[0][0]-5,bb[0][1]-5]]
-						.concat(parallel(bb[1][1]+5, bb[0][0]-5, bb[1][0]+5))
-						.concat(parallel(bb[0][1]-5, bb[0][0]-5, bb[1][0]+5).reverse())
-						]}
-					}
-				}
-				
-				// draw polygon (red frame) bigger than bb:
-				if (surface <15) { // is visible
-					redwindow.datum(//LineString 
-						red_rect
-					)
-					.style({'fill': '#B10000', "opacity": 1, 'fill-opacity': 0.3})
-					.style({'stroke-width': 1, 'stroke-opacity': 1, 'stroke': '#B10000', 'stroke-linejoin': 'round' })
-					.attr("d", path);
-				} else if (surface >15 ) { // isn't visible
-					redwindow.style({'opacity': 0}) ;
-				}
-
-			};
-		}) // runs transition
-		.each("end", function(){ return step(); } );
-  };
-step(); */
-
 });
 
 };
 
 
-/* ****************************************************** */
-/* LOCATION MAP MODULE  ********************************* */
+/* **************************************************************** */
+/* LOCATION MAP MODULE  ******************************************* */
+/* **************************************************************** */
 
-var locationMap = function(hookId, width, target, title, WEST, NORTH, EAST, SOUTH, nodejs){
+var locationMap = function(hookId, width, iso_a2, title, WEST, NORTH, EAST, SOUTH, nodejs){
 	var nodejs = 0 || nodejs;
-	console.log("locationMp()");
-/* SETTINGS ******************************************************************** */
+	console.log("locationMap()");
+/* SETTINGS ******************************************************* */
 // SVG injection:
 var width  = 600 || width,
 	title_ = title.replace(/ /g, "_").replace(/(_)+/g, "_"),
 	titleId = title.replace(/[^a-zA-Z0-9]/gi, "_").replace(/(_)+/g, "_");
 var svg = d3.select(hookId).append("svg:svg")
         .attr('version', '1.1')
-		.attr("name", title_+"_administrative_map_\(2015\)")
-		.attr("id", titleId)
 		.attr("width", width)
 		//.attr(':xmlns:xlink','').attr('xmlns:xlink','').attr('xlink','')
-//		.attr(':xmlns:geo','http://www.example.com/boundingbox/')
+//		.attr(':xmlns:geo','http://www.w3.org/2000/svg')
 		.attr(':xmlns:inkscape','http://www.inkscape.org/namespaces/inkscape')
 		.attr(":xmlns:cc","http://creativecommons.org/ns#");
 	/*  var svg = d3.select(hookId).append("svg").attr("width", width)
@@ -363,95 +321,90 @@ var svg = d3.select(hookId).append("svg:svg")
 			.attr(":xmlns:rdf","http://www.w3.org/1999/02/22-rdf-syntax-ns#") 
 	; */
 
-	$('svg').attr('xmlns:geo', 'http://example.com/boundingbox/');
+	$('svg').attr('xmlns:geo', 'http://www.w3.org/2000/svg');
 	//	d3.ns.qualify("geo:bb");
-	svg.append(':geo:g')
-//		.attr(':xmlns:geo','http://www.example.com/boundingbox/')
+var geo = svg.append(':geo:g')
+		.attr(':xmlns:geo','http://www.w3.org/2000/svg')
 		.attr(':geo:id','geo')
 		.attr(':geo:syntax', "WSEN bounding box in decimal degrees")
 		.attr(':geo:west',  WEST)
 		.attr(':geo:south', SOUTH)
 		.attr(':geo:east',  EAST)
-		.attr(':geo:north', NORTH)
-		.attr(':geo:title', title);
+		.attr(':geo:north', NORTH);
 	
-// Projection default
-var projection = d3.geo.mercator()
-		.scale(1)
-		.translate([0, 0]);
-var path = d3.geo.path()
-		.projection(projection); //  .pointRadius(4)
-
 injectPattern("svg"); //Pattern injection : disputed-in, disputed-out
 console.log("pattern()");
 
+// Runs code server or client side => raster images urls
+var root="";
+if (nodejs) { root = "http://localhost:8080/output/"+title; } 
+else { root = "../output/"+title; }
 
-// raster images urls
-var root = "../output/"+target;
-if (nodejs) { root = "http://localhost:8080/output/"+target; } 
-var url1  = root+"/administrative.topo.json", // https://rugger-demast.codio.io/output/"
+var url1 = root+"/administrative.topo.json", // https://rugger-demast.codio.io/output/"
 	url2 = root+"/color.jpg.b64",
-	url3 = root+"/trans.png.b64";
+	url3 = root+"/trans.png.b64", 
+	url4 = root+"/waters.topo.json",
+	url5 = root+"/elevations.topo.json";
 
  queue()
 	.defer(d3.json, url1)
 	.defer(d3.text, url2)
 	.defer(d3.text, url3)
-	.await(makeMap); /**/
-/** /	
-var Stone = (function () {
-    var json = null;
-    $.ajax({
-        'async': false,
-        'global': false,
-        'url': url,
-        'dataType': "json",
-        'success': function (data) {
-            json = data;
-        }
-    });
-    return json;
-})(); /**/
-	
+	.defer(d3.json, url4)
+	.defer(d3.json, url5)
+	.await(makeMap);
+
 /* *************************************************************** */
 /* *************************************************************** */
 /* *************************************************************** */
 
 	// Data (getJSON: TopoJSON)
-function makeMap(error, json, file2, file3){
+function makeMap(error, json, file2, file3, waters, elevations){
 		console.log("MakeMap: start");
 		//console.log("d3.json()");
 /* DATA ********************************************************** */
     var admin_0   = topojson.feature(json, json.objects.admin_0),
         admin_1   = topojson.feature(json, json.objects.admin_1),
-		L1_focus  = admin_1.features.filter(function(d) { return d.properties.L0 === target; }),
+		L1_focus  = admin_1.features.filter(function(d) { return d.properties.L0_name === title; }),
         disputed  = topojson.feature(json, json.objects.disputed),
+        rivers    = topojson.feature(waters, waters.objects.rivers),
+        lakes     = topojson.feature(waters, waters.objects.lakes),
         places    = topojson.feature(json, json.objects.places),
 		coast     = topojson.mesh(json, json.objects.admin_0, function(a,b) { return a===b;}),
         L0_border = topojson.mesh(json, json.objects.admin_0, function(a,b) { return a!==b;}),
 		L1_border = topojson.mesh(json, json.objects.admin_1, function(a,b) { 
-			return a !==b && a.properties.L0 === b.properties.L0 && a.properties.L0 === target;
+			return a !==b && a.properties.L0 === b.properties.L0 && a.properties.L0 === iso_a2;
 		});
 		// neighbors = topojson.neighbors(Stone.objects.admin_1.geometries); // coloring: full line
 
 /* STYLES ******************************************************** */
 	var S = {};
-  		S.focus = wp.location.focus+ wp.stroke.no,
+		S.focus = wp.location.focus+ wp.stroke.no,
 		S.land  = wp.location.land + wp.stroke.no,
+		S.frame = wp.location.locator + wp.location.frame + wp.stroke.md,
 		S.coast = wp.location.waterline+ wp.stroke.md,
 		S.water = wp.location.waterarea,
+		S.rivers= wp.location.waterline,
+		S.lakes = wp.location.waterline + wp.location.waterarea,
 		S.L0_border = wp.location.border + wp.stroke.md + wp.dash.xl,
 		S.L1_border = wp.location.border + wp.stroke.md + wp.dash.no,
 		S.Places_labels = wp.label.all+wp.label.admin+wp.label.sm,
-		S.L1_labels     = wp.label.all+wp.label.admin+wp.label.sm+wp.label.middle+wp.label.transparent;
+		S.L1_labels     = wp.label.all+wp.label.admin+wp.label.sm +wp.label.middle ;
 
 	
+	// Projection default
+	var projection = d3.geo.mercator()
+		.scale(1)
+		.translate([0, 0]);//  .pointRadius(4)
 	// Projection recalculated
-	var t = getTransform(admin_0,0,width, projection); // NEED BB. Island are tied otherwise.
+	var focusFrameGeojson = { type: "Polygon", coordinates: [ [[WEST,SOUTH],[WEST,NORTH],[EAST,NORTH],[EAST,SOUTH],[WEST,SOUTH]] ]};
+	var t = getTransform(focusFrameGeojson,0,width, projection); 
 	projection
 		.scale(t.scale)
 		.translate(t.translate);
 	svg.attr("height", t.height);
+	var path = d3.geo.path()
+		.projection(projection); 
 	
 	//oceans
 	var bg = svg.append("g")
@@ -460,7 +413,7 @@ function makeMap(error, json, file2, file3){
 	
 	bg.append("g").attr("id","water")
 		.attr("style", S.water)
-	  .append("rect")
+		.append("rect")
 		.attr("x", 0)
 		.attr("y", 0)
 		.attr("width",    width)
@@ -471,54 +424,239 @@ function makeMap(error, json, file2, file3){
 	//.attr("transform","scale(1, 1)")
 		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'topography_raster',':inkscape:label':'topography_(raster)'})
-	  .append("image")
+		.append("image")
 		.attr("width", width)
 		.attr("height", t.height)
-		.attr("xlink:xlink:href", "data:image/jpg;base64," + file2); // replace link by data URI // replace href link by data URI, d3js + client handle the missing xlink
+		.attr("xlink:xlink:href", "data:image/jpeg;base64," + file2); // replace link by data URI // replace href link by data URI, d3js + client handle the missing xlink
+
 
 /* Polygons ****************************************************** */
 //Append L0 polygons 
 	var L0 = svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'L0',':inkscape:label':'L0'})
 	.selectAll(".countries")
         .data(admin_0.features)
       .enter().append("path")
         .attr("class", "L0")
+        .attr("code", function(d) { return d.properties.L0; })
         .attr("name", function(d) { return d.properties.name; })
-        .attr("style", function(d){ return d.properties.L0 === target? S.focus : S.land; } )
+        .attr("style", function(d){ return d.properties.L0 === iso_a2? S.focus : S.land; } )
         //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
         .attr("d", path)
 		.on("click", click);
  
+
+/* *************************************************************** */
+/* Administrative ************************************************ */
+/* *************************************************************** */
+var mapType="administrative";
+if(mapType==="adiministrative"){ 
+	function admin(){ "do nothing"; }
+}
+var meta= svg.attr("id", titleId)
+			.attr("name", title_+"_administrative_map_(2015)");
+		geo.attr(':geo:title', title);
+console.log(L1_focus);
 //Append L1 polygons 
     var L1 = svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'L1',':inkscape:label':'L1'})
+		.attr("style", S.focus)
 	.selectAll(".subunit")
         .data(L1_focus)
       .enter().append("path")
-        .attr("class", function(d){ return d.properties.L0 === target? "L1": "L1 invisible"; } )
-        .attr("name", function(d) { return d.id; })
-        .attr("style", function(d){ return d.properties.L0 === target? S.focus : S.land; } )
-        .attr("d", path )
+        .attr("code", function(d) { return d.properties.L1; })
+        .attr("name", function(d) { return d.properties.name; })
+//        .attr("style", function(d){ return d.properties.L0 === iso_a2? S.focus : S.land; } ) // filter done in data
+		.attr("bounds", function(d){ var bb = path.bounds(d), o = {'left':bb[0][0],'top':bb[0][1],'right':bb[1][0],'bottom':bb[1][1]}; return JSON.stringify(o);} )
+		.attr("area", function(d){ return path.area(d);} )
         //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
-       // .on("mouseover", )
+        .attr("d", path )
+		// .on("mouseover", )
 		.on("click", click);
 
+	var L1_frames = svg.append("g")
+		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'L1_frames',':inkscape:label':'L1_frames'})
+		.attr("style", S.frame)
+	.selectAll("path")
+        .data(L1_focus)
+      .enter().append("path")
+		.attr("style","fill-opacity:0.3;fill-color: red;")
+		.attr("name", function(d){ return "Frame for "+d.properties.name;})
+		.attr("d", function(d){
+			var bb = path.bounds(d), margin=width/100*5, condition = path.area(d)<=margin*margin;
+			return bbPxToAugmentedXmlBBox(bb, margin, condition);
+		});
+
+	
+ //Append disputed polygons 
+ var disputeds = function(){ 
+	if(disputed.features){
+    svg.append("g")
+		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'Disputed',':inkscape:label':'Disputed'})
+	.selectAll(".disputed")
+        .data(disputed.features)
+      .enter().append("path")
+		.attr("name", function(d) { return d.properties.name; })
+        .attr("fill", function(d){ return d.properties.L0 === iso_a2? "url(#hash2_4)": "url(#hash4_2)";} )
+        .attr("d", path )
+        //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
+        .on("click", click);
+	}
+ }();
+
+/* Elevations helpers ******************************************************** */
+var getElevationsDomain = function(elevations_json){
+	var elevationsKeys  =  Object.keys(elevations_json.objects),
+		elevationLength = elevationsKeys.length, // 7
+		elevationDomain = [];
+	for(var i=0; i<elevationLength; i++){
+		var code = Number( elevationsKeys[i].replace(/[^\d.-]/g, '') );
+		console.log("Layers & current: "+elevationLength+ " // "+ code);
+		elevationDomain.push(code);
+	}
+	return elevationDomain;
+};
+var elevationType = function (elevationDomain){
+	var min = d3.min(elevationDomain), 
+		max = d3.max(elevationDomain),
+		type="";
+	if(min>=0) {
+		type = min<300&&max<2000? "plain&hills":
+			min>=300&&max<2000? "hills":
+				min>=300&&max>=2000? "hills&mounts": 
+					"all";
+	}else if (min<0) { type = min>-200? "sea":"deep_sea"; }
+   console.log("Topographic type: "+type);
+	return type;
+};
+var selectColorRange = function (elevationDomain){
+	var range=[],
+	type = elevationType(elevationDomain);
+	switch(type){
+		case "all"			: range = ['#94BF8B','#EFEBC0','#AA8753','#FFFFFF']; break;
+		case "plain&hills"	: range = ['#94BF8B','#EFEBC0','#AA8753']; break;
+		case "hills"		: range = [          '#EFEBC0','#AA8753']; break;
+		case "hills&mounts"	: range = [          '#EFEBC0','#AA8753','#FFFFFF']; break;
+		case "sea"			: range = ['#71ABD8','#D8F2FE']; break;
+		case "deep_sea"		: range = ['#002040','#71ABD8','#D8F2FE']; break;
+	}	console.log("Topographic D3 range: "+range);
+	return range;
+};
+var topographicColorScale = function (elevationDomain){
+	var colorRange = selectColorRange(elevationDomain);
+	var d = (elevationDomain.length)/colorRange.length;
+	var newDomain = []; // number of elements of domain and range must be equal. See D3 > Quantitative-Scales#linear_domain > "polylinear scale"
+	for (var i=0; i < colorRange.length; i++){ newDomain.push(0+i*d);}
+	var scale = d3.scale.linear()
+		.domain(newDomain)
+		.range(colorRange);
+	console.log("Topographic D3 domain:"+ newDomain);
+	return scale;
+};
+
+/* Elevations *************************************************************** */
+	var svg_elevation = svg.append("g")
+		.attr(":inkscape:groupmode","layer")
+		.attr({'id': 'Elevations',':inkscape:label':'Elevations'})
+		.attr("style", function(d){ return "fill:#88BB88;fill-opacity:0.3"; } );
+
+	var drawElevations = function(json_data, name, i){
+		var color = colorScale(i);		// console.log("current: "+ i + "/" + elevationsKeys[i]+", color: "+color);
+		svg_elevation.append("g")
+			.attr({'id': name,':inkscape:label': name})
+			.attr("style", "fill:"+color+";fill-opacity:1;" )
+			.selectAll(".altitude")
+		.data(json_data.features)
+			.enter().append("path")
+			//  .attr("style", function(d){ return "fill:#88BB88;fill:opacity:0.2"; } )
+			//.attr("style", "fill:"+S.elevations[iteration]+";" )
+			.attr("d", path );
+	};
+	if(elevations.objects){
+		var elevationsDomain = getElevationsDomain(elevations);	//	console.log(elevationsDomain);  // [0, 100, 200, 500, 1000, 2000, 5000]
+		var colorScale = topographicColorScale(elevationsDomain);
+		var elevationsKeys = Object.keys(elevations.objects);
+		for(var i=0 ; i<elevationsKeys.length; i++){
+			var name = elevationsKeys[i];
+			var data = topojson.feature(elevations, elevations.objects[name]);
+			drawElevations(data,name, i);
+		}
+	}
+	
+/* Hillshdes vector ******************************************************** */
+/** /
+	var svg_hillshades_vector = svg.append("g")
+		.attr(":inkscape:groupmode","layer")
+		.attr({'id': 'Hillshades_vector',':inkscape:label':'Hillshades_vector'})
+		.attr("style", function(d){ return "fill:#88BB88;fill-opacity:0.3"; } );
+
+	var drawHillshades = function(json_data, name){
+		if(json_data.features){
+		var code = name.replace(/[^\d.-]/g, '');
+		svg_elevation.append("g")
+			.attr({'id': name,':inkscape:label': name})
+			.selectAll(".altitude")
+		.data(json_data.features)
+			.enter().append("path")
+			.attr("d", path );
+		}
+	};
+	for(var i in hillshades.objects){
+		var name = i; // Object.keys(elevations.objects)[i];
+		var data = topojson.feature(hillshades, hillsahdes.objects[name]);
+		drawHillshades(data,name);
+	};
+	/**/
+	
+/* Hillshades *************************************************************** */
 	var hillshade = svg.append("g")
 		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'hillshade_raster',':inkscape:label':'hillshade_(raster)'})
-	  .append("image")
+	.append("image")
 		.attr("width", width)
 		.attr("height", t.height)
 		.attr("xlink:xlink:href", "data:image/png;base64," + file3); // replace link by data URI // replace href link by data URI, d3js + client handle the missing xlink
 
+ //Append rivers polygons 
+ var rivers = function(){ 
+	if(rivers.features){
+    svg.append("g")
+		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'Rivers',':inkscape:label':'Rivers'})
+		.attr("style", S.rivers + wp.stroke.xs)
+	.selectAll(".rivers")
+        .data(rivers.features)
+      .enter().append("path")
+		.attr("name", function(d) { return d.properties.name; })
+		.attr("style", function(d) { return d.properties.scalerank >3? null: S.rivers+wp.stroke.sm; })
+        //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
+        .attr("d", path );
+	}
+ }();
+ //Append lakes polygons 
+ var lakes = function(){ 
+	if(lakes.features){
+    svg.append("g")
+		.attr(":inkscape:groupmode","layer")
+		.attr({'id':'Lakes',':inkscape:label':'Lakes'})
+		.attr("style", S.lakes)
+	.selectAll(".lakes")
+        .data(lakes.features)
+      .enter().append("path")
+		.attr("name", function(d) { return d.properties.name; })
+        //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
+        .attr("d", path );
+	}
+ }();
 
 /* Arcs ********************************************************** */
 // Admin1-borders filtered
    var L1_borders = svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'L1_borders',':inkscape:label':'L1_borders'})
 	.append("path")
         .datum(L1_border)
@@ -528,17 +666,17 @@ function makeMap(error, json, file2, file3){
 
 // Admin0-borders filtered
    var L0_borders = svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'L0_borders',':inkscape:label':'L0_borders'})
 	.append("path")
         .datum(L0_border)
         .attr("class", "L0_border")
         .attr("style", S.L0_border) // css
-        .attr("d", path);
+		.attr("d", path);
 
 // Coast-borders filtered
    var coasts = svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'Coast',':inkscape:label':'Coast'})
 	.append("path")
         .datum(coast )
@@ -546,37 +684,22 @@ function makeMap(error, json, file2, file3){
         .attr("style", S.coast) // css
         .attr("d", path);
 
- //Append disputed polygons 
- var disputeds = function(){ 
-	if(disputed.features){
-    svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
-		.attr({'id':'Disputed',':inkscape:label':'Disputed'})
-	.selectAll(".disputed")
-        .data(disputed.features)
-      .enter().append("path")
-		.attr("name", function(d) { return d.id; })
-        .attr("fill", function(d){ return d.properties.L0 === target? "url(#hash2_4)": "url(#hash4_2)"} )
-        .attr("d", path )
-        //.style("fill", function(d, i) { return color(d.color = d3.max(neighbors[i], function(n) { return subunits[n].color; }) + 1 | 0); })  // coloring: fill
-        .on("click", click);
- 	}
- }()
+
 
 /* DOT & LABELS **************************************************** */
 // Places: dot placement ******************************************* */
  if(places.features){
     svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'Places_dots',':inkscape:label':'Places_dots'})
 		.attr("style", "fill:#646464;")
 	.selectAll("path")
         .data(places.features)
       .enter().append("text")
         .attr("class", "place")
-		.attr("name", function(d) { return d.id; })
-		.attr("x",    function(d) { return path.centroid(d)[0] })
-		.attr("y",    function(d) { return path.centroid(d)[1] })
+		.attr("name", function(d) { return d.properties.name; })
+		.attr("x",    function(d) { return path.centroid(d)[0]; })
+		.attr("y",    function(d) { return path.centroid(d)[1]; })
 		.attr("dy",".33em")
 		.text(function(d){ var s = d.properties.status;
            return s==="Admin-0 capital"? "◉": s==="Admin-1 capital"? "●" : "⚪"; // ⬤◉⍟☉⚪⚫●⚬◯★☆☆⭐ ⭑ ⭒
@@ -588,57 +711,57 @@ function makeMap(error, json, file2, file3){
 		
 // Places: label placement
     svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'Places_labels',':inkscape:label':'Places_labels'})
 		.attr("style", S.Places_labels)
 	.selectAll(".place-label")
         .data(places.features)
       .enter().append("text")
         .attr("class", "place-label")
-		.attr("name",   function(d) { return d.id; })
-		.attr("status", function(d){return d.properties.status})
+		.attr("name",   function(d){ return d.properties.name; })
+		.attr("status", function(d){ return d.properties.status;})
 		.attr("style",  function(d){ 
-		    var s,t;
+			var s,t;
             d.properties.status==="Admin-0 capital"? s=wp.label.xl:
-            d.properties.status==="Admin-1 capital"? s=wp.label.md : s="";
-		    d.geometry.coordinates[0] < EAST-(EAST - WEST)/10? t= "" : t="text-anchor:end;";
-			return s = s+t;
+            d.properties.status==="Admin-1 capital"? s=wp.label.md: s="";
+			d.geometry.coordinates[0] < EAST-(EAST - WEST)/10? t= "" : t="text-anchor:end;";
+			return s+t;
 		})
         .attr({"dy":".33em","x":function(d) { return d.geometry.coordinates[0] < EAST-(EAST-WEST)/10 ? 8 : -8; } }) // avoid dot overlap
 		.attr("transform",  function(d) { return "translate(" + projection(d.geometry.coordinates) + ")"; })
-        .text(function(d) { return d.geometry.coordinates[0] < EAST-(EAST-WEST)/10 ? d.id: "" } );
+        .text(function(d) { return d.geometry.coordinates[0] < EAST-(EAST-WEST)/10 ? d.properties.name: ""; } );
 
 /* L0 labels ***************************************************** */
     svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'L0_labels',':inkscape:label':'L0_labels'})
 		.attr("style", S.L1_labels + wp.label.md)
 	.selectAll(".countries-label")
         .data(admin_0.features)
       .enter().append("text")
-        .attr("style", function(d){ return d.properties.L0 === target? "visibility:none;":""; })
-        .attr("name", function(d) { return d.id ;})
-		.attr("x", function (d) { return path.centroid(d)[0] })
-		.attr("y", function (d) { return path.centroid(d)[1] })
-		.text(function(d) { return d.id; });
+        .attr("style", function(d){ return d.properties.L0 === iso_a2? "visibility:none;":""; })
+        .attr("name", function(d) { return d.properties.name ;})
+		.attr("x", function (d) { return path.centroid(d)[0]; })
+		.attr("y", function (d) { return path.centroid(d)[1]; })
+		.text(function(d) { return d.properties.name; });
 
 /* L1 labels ***************************************************** */
     svg.append("g")
- 		.attr(":inkscape:groupmode","layer")
+		.attr(":inkscape:groupmode","layer")
 		.attr({'id':'L1_labels',':inkscape:label':'L1_labels'})
 		.attr("style", S.L1_labels)
 	.selectAll(".subunit-label")
         .data(L1_focus)
       .enter().append("text")
-        .attr("class", function(d){ return d.properties.L0 === target? "L1_label": "L1_label invisible"; } )
-        .attr("name", function(d) { return d.id ;})
-		.attr("x", function (d) { return path.centroid(d)[0] })
-		.attr("y", function (d) { return path.centroid(d)[1] })
-		.text(function(d) { return d.id; });
+        .attr("class", function(d){ return d.properties.L0 === iso_a2? "L1_label": "L1_label invisible"; } )
+        .attr("name", function(d) { return d.properties.name ;})
+		.attr("x", function (d) { return path.centroid(d)[0]; })
+		.attr("y", function (d) { return path.centroid(d)[1]; })
+		.text(function(d) { return d.properties.name; });
 
-	console.log("layers end")
+	console.log("layers end");
   }
-}//END fn.InjectMap*/
+};//END fn.InjectMap*/
 
 
 
@@ -653,17 +776,17 @@ var getTransform = function(d,padding_pc, width, projection) {
 		// b.w = b[0][0]; b.s = b[0][1]; b.e = b[1][0]; b.n = b[1][1];
 		b.dx = Math.abs(b[1][0] - b[0][0]);	// distance x = E-W
 		b.dy = Math.abs(b[1][1] - b[0][1]);	// distance y = N-S
-		b.cx = (b[1][0] + b[0][0]) / 2; 	// center x
-		b.cy = (b[1][1] + b[0][1]) /2; 	// center y
+		b.cx = (b[1][0] + b[0][0]) / 2;		// center x
+		b.cy = (b[1][1] + b[0][1]) /2;		// center y
 	//compute meaningful ratio, scale, translation
 	var t={};
 		t.ratio = ( b.dy / b.dx );
 		if (typeof height==="undefined"){ t.height=width*t.ratio;}
-		else { t.height = height; console.log("height");};
+		else { t.height = height; console.log("height");}
 		t.scale = pd * Math.min( width/b.dx, t.height/b.dy); // default: .9 * ( width / b.dx)
 		t.translate = [(width/2- t.scale * b.cx), (t.height/2 - t.scale * b.cy) ]; //translation
 	return t;
-}
+};
 
 /* ****************************************************** */
 /* DOWNLOAD BUTTONS MODULE ****************************** */
@@ -683,7 +806,7 @@ d3.select(selector).html("").append("button")
 		if(proj !== 0 ) {
 			// CLIPING DESTROY THE MAP, how to save the clip dom in variable ?
 			var dx = svg.attr("width"); var dy = svg.attr("height");
-	  		projection.clipExtent([[0,0],[dx,dy]]); console.log(projection.scale()); 
+			projection.clipExtent([[0,0],[dx,dy]]); console.log(projection.scale()); 
 			svg.selectAll("path").attr("d", path);
 		}
 	// download:
@@ -695,7 +818,7 @@ d3.select(selector).html("").append("button")
 		e.setAttribute('class', 'svg-crowbar'); 
 		document.body.appendChild(e); })
 	.text(" Download"); /* -- Works on Chrome. Feedback welcome for others web browsers.*/
-}
+};
 
 
 /* ****************************************************** */

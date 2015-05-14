@@ -28,20 +28,19 @@ path.L1:hover { fill: #B10000 ;}
 /* DATA ******************************************************************** */
 // India geo-frame borders in decimal ⁰
 var areas = [
-	{"item":"France", "W": -5.8, "N":51.5, "E": 10,"S": 41.0},
-	{"item":"India", "W": 67.0, "N":37.5, "E": 99.0, "S": 5.0}, 
-	{"item":"Cambodia","W":102.1,"N":14.7,"E":107.8,"S":10.3},
-	{"item":"China", "W":70.58,"N":55.21,"E":138.06,"S":16.43 },
-	{"item":"Iceland", "W":-24.89, "N":66.67, "E":-13.09, "S":63.33}
+	{"iso_a2": "IN","name":"India", "W": 67.0, "N":37.5, "E": 99.0, "S": 5.0}, 
+	{"iso_a2": "FR","name":"France", "W": -5.8, "N":51.5, "E": 10,"S": 41.0},
+	{"iso_a2": "CB","name":"Cambodia","W":102.1,"N":14.7,"E":107.8,"S":10.3},
+	{"iso_a2": "CN","name":"China", "W":70.58,"N":55.21,"E":138.06,"S":16.43 }
 ];
-var target=areas[0].item,
-	title="Country's name",
+var iso_a2=areas[0].iso_a2,
+	name=areas[0].name,
 	WEST=areas[0].W,
 	NORTH=areas[0].N,
 	EAST=areas[0].E,
 	SOUTH=areas[0].S;
 
 // var color = d3.scale.category10(); // d3.scale.ordinal().domain(["000000", "FFFFFF", "baz"]).range(colorbrewer.RdBu[9]);
-locationMap("#hook",300, target, title, WEST, NORTH, EAST, SOUTH);/**/
+locationMap("#hook",300, iso_a2, name, WEST, NORTH, EAST, SOUTH, false);/**/
 downloadButtons(".download",0)
 </script>
